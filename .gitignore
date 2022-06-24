@@ -1,0 +1,12 @@
+syntax: glob
+__pycache__/
+.cache
+.coverage
+.pytest_cache
+flake8.out
+*.egg-info
+*~
+*.pyc
+doc/build
+doc/source/generated/
+dist
