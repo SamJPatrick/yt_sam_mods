@@ -1,4 +1,3 @@
-import statistics
 import numpy as np
 import os
 import yt

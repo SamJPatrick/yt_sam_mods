@@ -11,11 +11,11 @@ from yt.data_objects.level_sets.api import Clump, find_clumps, add_validator
 
 from ytree.analysis import AnalysisPipeline
 
-from yt.extensions.p2p.misc import return_sphere, align_sphere, transpose_unyt
-from yt.extensions.p2p.profiles import my_profile
-from yt.extensions.p2p.plots import *
-from yt.extensions.p2p.tree_analysis_operations import yt_dataset, garbage_collect, delattrs
-from yt.extensions.p2p import add_p2p_fields
+from yt.extensions.sam_mods.misc import return_sphere, align_sphere, transpose_unyt
+from yt.extensions.sam_mods.profiles import my_profile
+from yt.extensions.sam_mods.plots import *
+from yt.extensions.sam_mods.tree_analysis_operations import yt_dataset, garbage_collect, delattrs
+from yt.extensions.sam_mods import add_p2p_fields
 
 from yt import derived_field
 from unyt import unyt_quantity, unyt_array
@@ -38,21 +38,24 @@ def bonnor_ebert(node, outdir='.', nbins=120, take_log= False):
     mtot_prof = [sum(sphere.quantities.total_mass()) for sphere in spheres]
     #mtot_prof = [sphere.quantities.total_mass()[0] for sphere in spheres]
     cs_prof = [sphere.quantities.weighted_average_quantity(('gas', 'sound_speed'), ('gas', 'cell_mass')) for sphere in spheres]
-    vsigma_prof = [sphere.quantities.weighted_average_quantity(('gas', 'vsigma'), ('gas', 'cell_mass')) for sphere in spheres]
+    csquad_prof = [sphere.quantities.weighted_average_quantity(('gas', 'cs_quad'), ('gas', 'cell_mass')) for sphere in spheres]
     
     mtot_prof = transpose_unyt(mtot_prof).in_units('Msun')
     cs_prof = transpose_unyt(cs_prof).in_units('km/s')
-    vsigma_prof = transpose_unyt(vsigma_prof).in_units('km/s')
+    csquad_prof = transpose_unyt(csquad_prof).in_units('km/s')
     
     tff_norm_ratio = ( (np.pi / np.sqrt(8 * G)) * cs_prof * np.sqrt(radii / mtot_prof) ).in_units('')
-    tff_turb_ratio = ( (np.pi / np.sqrt(8 * G)) * vsigma_prof * np.sqrt(radii / mtot_prof) ).in_units('')
+    tff_turb_ratio = ( (np.pi / np.sqrt(8 * G)) * csquad_prof * np.sqrt(radii / mtot_prof) ).in_units('')
     tcool_norm_ratio = ( cs_prof * profile[('gas', 'cooling_time')] / radii ).in_units('')
-    tcool_turb_ratio = ( vsigma_prof * profile[('gas', 'cooling_time')] / radii ).in_units('')
-    #be_prof = mtot_prof - ( (1.18 * cs_prof**4) / (profile[('gas', 'velocity_magnitude')] * np.sqrt(2 * profile[('gas', 'density')] * G**3)) )
-    be_prof = mtot_prof - ( (1.18 * cs_prof**4) / np.sqrt(G**3 * profile[('gas', 'pressure')]) ) 
+    tcool_turb_ratio = ( csquad_prof * profile[('gas', 'cooling_time')] / radii ).in_units('')
+    #be_norm_prof = mtot_prof - ( (1.18 * cs_prof**4) / (profile[('gas', 'velocity_magnitude')] * np.sqrt(2 * profile[('gas', 'density')] * G**3)) )
+    #be_turb_prof = mtot_prof - ( (1.18 * csquad_prof**4) / (profile[('gas', 'velocity_magnitude')] * np.sqrt(2 * profile[('gas', 'density')] * G**3)) )
+    be_norm_prof = mtot_prof - ( (1.18 * cs_prof**4) / np.sqrt(G**3 * profile[('gas', 'pressure')]) )
+    be_turb_prof = mtot_prof - ( (1.18 * csquad_prof**4) / np.sqrt(G**3 * profile[('gas', 'pressure')]) ) 
     
     fpath = os.path.join(os.getcwd(), outdir, f"{str(ds)}_bonnor_ebert.h5")
-    be_prof.write_hdf5(fpath, info={'time':ds.current_time, 'dump': str(ds)}, group_name='deviation')
+    be_norm_prof.write_hdf5(fpath, info={'time':ds.current_time, 'dump': str(ds)}, group_name='deviation_norm')
+    be_turb_prof.write_hdf5(fpath, info={'time':ds.current_time, 'dump': str(ds)}, group_name='deviation_turb')
     tff_norm_ratio.write_hdf5(fpath, info={'time':ds.current_time, 'dump': str(ds)}, group_name='tff_ratio_norm')
     tff_turb_ratio.write_hdf5(fpath, info={'time':ds.current_time, 'dump': str(ds)}, group_name='tff_ratio_turb')
     tcool_norm_ratio.write_hdf5(fpath, info={'time':ds.current_time, 'dump': str(ds)}, group_name='tcool_ratio_norm')
@@ -74,9 +77,10 @@ if __name__ == "__main__":
     a = ytree.load(tree_path)
     if "icom_gas2_position_x" in a.field_list:
         a.add_vector_field("icom_gas2_position")
-
+    
     ap = AnalysisPipeline()
-    ap.add_operation(yt_dataset, data_dir, es)
+    ap.add_operation(yt_dataset, data_dir, add_fields=True)
+    #ap.add_operation(yt_dataset, data_dir, es)
     ap.add_operation(return_sphere)
     ap.add_operation(align_sphere)
     

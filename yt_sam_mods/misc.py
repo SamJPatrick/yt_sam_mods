@@ -1,8 +1,10 @@
 import yt
-from yt.extensions.astro_analysis.halo_analysis.halo_catalog.halo_callbacks import \
-    periodic_distance
-from yt.utilities.exceptions import \
-    YTSphereTooSmall
+import numpy as np
+import statistics
+from unyt import unyt_array, unyt_quantity
+from unyt import pc, Myr
+from yt.extensions.astro_analysis.halo_analysis.halo_catalog.halo_callbacks import periodic_distance
+from yt.utilities.exceptions import YTSphereTooSmall
 
 
 
@@ -83,7 +85,7 @@ def return_sphere(node):
 
 def align_sphere(node):
     ds = node.ds
-    sphere = node.sphere
+    sp0 = node.sphere
     bulk_vel = sp0.quantities.bulk_velocity()
     sphere = ds.sphere(sp0.center, sp0.radius)
     sphere.set_field_parameter("bulk_velocity", bulk_vel)

@@ -9,14 +9,13 @@ import time
 import yaml
 
 from ytree.data_structures.tree_node import TreeNode
-from yt import ProjectionPlot, ParticleProjectionPlot
+
 from yt import load as yt_load
+from yt import ProjectionPlot, ParticleProjectionPlot
 from yt.utilities.logger import ytLogger as mylog
-from yt.extensions.p2p.fields import add_p2p_fields
-from yt.extensions.p2p.misc import sphere_icom, reunit
-from yt.extensions.p2p.profiles import my_profile
-
-
+from yt.extensions.sam_mods.misc import sphere_icom, reunit
+from yt.extensions.sam_mods.profiles import my_profile
+from yt.extensions.sam_mods import add_p2p_fields
 
 
 _dataset_dicts = {}
@@ -85,7 +84,19 @@ def _getds(node):
 def _yt_dataset_pre():
     TreeNode.ds = property(fget=_getds, fset=_setds, fdel=_delds)
 
-    
+
+def yt_dataset(node, data_dir, add_fields=True):
+    ds = getattr(node, "ds", None)
+    if (ds != None):
+        return
+    node.ds_filename = get_dataset_filename(node, data_dir)
+    node.ds = yt_load(node.ds_filename)
+   
+    if add_fields:
+        add_p2p_fields(node.ds)
+
+
+'''    
 def yt_dataset(node, data_dir, add_fields=True):
     node._ds_filename = get_dataset_filename(node, data_dir)
 
@@ -96,7 +107,7 @@ def yt_dataset(node, data_dir, add_fields=True):
 
     if add_fields:
         add_p2p_fields(node.ds)
-
+'''
         
 yt_dataset.preprocess = _yt_dataset_pre
 

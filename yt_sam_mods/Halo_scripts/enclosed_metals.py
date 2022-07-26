@@ -22,7 +22,7 @@ from unyt import G, Msun, kb, mh, pc
 
 
 
-def enclosed_mass(node, outdir='.', nbins=120, take_log= False):
+def enclosed_metals(node, outdir='.', nbins=120, take_log= False):
 
     ds = node.ds
     sphere = node.sphere
@@ -34,17 +34,14 @@ def enclosed_mass(node, outdir='.', nbins=120, take_log= False):
     else :
         radii = np.linspace(dx, virial_radius, num= nbins)
         
-    mass_tups = [ds.sphere(sphere.center, radius).quantities.total_mass() for radius in radii]
-    mass_tot = [sum(tup) for tup in mass_tups]
-    mass_tot = transpose_unyt(mass_tot).in_units('Msun')
-    mass_bary, mass_dm = zip(*mass_tups)
-    mass_bary = transpose_unyt(list(mass_bary)).in_units('Msun')
-    mass_dm = transpose_unyt(list(mass_dm)).in_units('Msun')
-    
+    metal_masses = [ds.sphere(sphere.center, radius).quantities.total_quantity(('gas', 'metal3_mass')) for radius in radii]
+    metal_masses = transpose_unyt(metal_masses).in_units('Msun')
+    metal_ztot = [ds.sphere(sphere.center, radius).quantities.weighted_average_quantity(('gas', 'total_metallicity'), ('gas', 'cell_mass')) for radius in radii]
+    metal_ztot = transpose_unyt(metal_ztot).in_units('Zsun')
+        
     fpath = os.path.join(os.getcwd(), outdir, f"{str(ds)}_enclosed_mass.h5")
-    mass_tot.write_hdf5(fpath, info={'time':ds.current_time, 'dump': str(ds)}, group_name='total_mass')
-    mass_bary.write_hdf5(fpath, info={'time':ds.current_time, 'dump': str(ds)}, group_name='baryonic_mass')
-    mass_dm.write_hdf5(fpath, info={'time':ds.current_time, 'dump': str(ds)}, group_name='dm_mass')
+    metal_masses.write_hdf5(fpath, info={'time':ds.current_time, 'dump': str(ds)}, group_name='metal_mass')
+    metal_ztot.write_hdf5(fpath, info={'time':ds.current_time, 'dump': str(ds)}, group_name='total_metallicity')
     radii.write_hdf5(fpath, info={'time':ds.current_time, 'dump': str(ds)}, group_name='radius')
 
 
@@ -67,8 +64,8 @@ if __name__ == "__main__":
     ap.add_operation(return_sphere)
     ap.add_operation(align_sphere)
     
-    ap.add_operation(enclosed_mass, outdir= 'Profiles/Enclosed_mass_lin', nbins= 120)
-    ap.add_operation(enclosed_mass, outdir= 'Profiles/Enclosed_mass_log', nbins= 120, take_log= True)
+    ap.add_operation(enclosed_metals, outdir= 'Profiles/Enclosed_metals_lin', nbins= 120)
+    ap.add_operation(enclosed_metals, outdir= 'Profiles/Enclosed_metals_log', nbins= 120, take_log= True)
     
     ap.add_operation(delattrs, ["sphere", "ds"], always_do=True)
     ap.add_operation(garbage_collect, 60, always_do=True)

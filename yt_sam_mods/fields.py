@@ -1,17 +1,9 @@
 ###Pop2Prime fields.
 
-
-#-----------------------------------------------------------------------------
-# Copyright (c) Britton Smith <brittonsmith@gmail.com>.  All rights reserved.
-#
-# Distributed under the terms of the Modified BSD License.
-#
-# The full license is in the file COPYING.txt, distributed with this software.
-#-----------------------------------------------------------------------------
-
 import numpy as np
 from yt.utilities.exceptions import YTFieldNotFound
-from unyt import G
+from unyt import kb, G, Msun, pc
+from unyt import unyt_quantity, unyt_array
 
 
 
@@ -25,7 +17,7 @@ def _metal3_mass(field, data):
 def _metallicity3_min7(field, data):
     field_data = data[('enzo', 'SN_Colour')] / data[('gas', 'density')]
     field_data.convert_to_units("")
-    min_Z = data.ds.quan(1.e-7, "Zsun").in_units("")
+    min_Z = unyt_quantity(1.e-7, "Zsun").in_units("")
     field_data[field_data < min_Z] = 0.5 * min_Z
     return field_data
 
@@ -156,9 +148,6 @@ def add_p2p_fields(ds):
     # use the value of solar metallicity in the dataset
     ds.unit_registry.modify('Zsun', ds.parameters['SolarMetalFractionByMass'])
 
-    if ("gas", "metallicity3") in ds.derived_field_list:
-        return
-
     add_p2p_field(ds, ('gas', 'ang_ratio'),
                   function=_ang_ratio,
                   units='', sampling_type='cell')
@@ -177,7 +166,7 @@ def add_p2p_fields(ds):
     add_p2p_field(ds, ('gas', 'HD_H2_ratio'),
                   function=_HD_H2,
                   units='', sampling_type='cell')
-    add_p2p_field(ds, ('gas' 'intrinsic_energy'),
+    add_p2p_field(ds, ('gas', 'intrinsic_energy'),
                   function=_intrinsic_energy,
                   units='erg', sampling_type='cell')
     add_p2p_field(ds, ('gas', 'intrinsic_energy_density'),
@@ -224,7 +213,7 @@ def add_p2p_fields(ds):
                   units="g/cm**3", sampling_type='cell')
     add_p2p_field(ds, ('gas', 'turbulent_velocity'),
                   function=_vturb,
-                  units='km/s', sampling_type='cell'
+                  units='km/s', sampling_type='cell')
     add_p2p_field(ds, ('gas', 'vortical_dynamical_ratio'),
                   function=_vortical_dynamical_ratio,
                   units='', sampling_type='cell')
