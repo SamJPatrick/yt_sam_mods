@@ -85,12 +85,14 @@ def _yt_dataset_pre():
     TreeNode.ds = property(fget=_getds, fset=_setds, fdel=_delds)
 
 
-def yt_dataset(node, data_dir, add_fields=True):
+def yt_dataset(node, data_dir, add_fields=True, load_data= True):
     ds = getattr(node, "ds", None)
     if (ds != None):
         return
     node.ds_filename = get_dataset_filename(node, data_dir)
-    node.ds = yt_load(node.ds_filename)
+
+    if load_data:
+        node.ds = yt_load(node.ds_filename)
    
     if add_fields:
         add_p2p_fields(node.ds)

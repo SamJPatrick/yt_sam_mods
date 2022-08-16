@@ -1,4 +1,6 @@
 import yt
+import pygrackle
+import os
 import numpy as np
 import statistics
 from unyt import unyt_array, unyt_quantity
@@ -96,7 +98,6 @@ def align_sphere(node):
     node.sphere = sphere
 
 
-
 def reunit(ds, val, units):
     if isinstance(val, yt.YTQuantity):
         func = ds.quan
@@ -122,3 +123,24 @@ def uperiodic_distance(x1, x2, domain=None):
 
     d = periodic_distance(x1.v, x2.v, dom)
     return d * x1.uq
+
+
+def modify_grackle(node, **grackle_params):
+
+    ds = node.ds
+    cooling_file = os.path.basename(ds.parameters["CloudyCoolingGridFile"])
+    cooling_data_dir = "/home/brs/cloudy/cloudy_cooling_data"
+    grackle_data_file = bytes(os.path.join(cooling_data_dir, cooling_file), 'utf-8')
+    
+    grackle_pars = {'grackle_data_file': grackle_data_file, 'cmb_temperature_floor': 0}
+    for key, value in grackle_params.items():
+        grackle_pars[key] = value
+    pygrackle.add_grackle_fields(ds, parameters=grackle_pars)
+
+    #print (sp['gas', 'grackle_cooling_time'])
+    #print (sp['gas', 'grackle_gamma'])
+    #print (sp['gas', 'grackle_mean_molecular_weight'])
+    #print (sp['gas', 'grackle_pressure'])
+    #print (sp['gas', 'grackle_temperature'])
+    #print (sp['gas', 'grackle_dust_temperature'])
+

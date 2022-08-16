@@ -1,4 +1,3 @@
-import statistics
 import numpy as np
 import os
 import yt
@@ -23,6 +22,9 @@ from unyt import G, Msun, kb, mh, pc
 
 
 
+MASS_FOLDER = 'Profiles/Enclosed_mass'
+
+
 
 def bonnor_ebert(node, outdir='.', nbins=120, take_log= False):
 
@@ -35,14 +37,17 @@ def bonnor_ebert(node, outdir='.', nbins=120, take_log= False):
                          logs={'radius': take_log}, n_bins= nbins, weight_field= ('gas', 'cell_mass'))
     radii = profile.x_bins[1:].in_units('pc')
     spheres = [ds.sphere(sphere.center, radius) for radius in radii]
-    mtot_prof = [sum(sphere.quantities.total_mass()) for sphere in spheres]
-    #mtot_prof = [sphere.quantities.total_mass()[0] for sphere in spheres]
     cs_prof = [sphere.quantities.weighted_average_quantity(('gas', 'sound_speed'), ('gas', 'cell_mass')) for sphere in spheres]
     csquad_prof = [sphere.quantities.weighted_average_quantity(('gas', 'cs_quad'), ('gas', 'cell_mass')) for sphere in spheres]
-    
-    mtot_prof = transpose_unyt(mtot_prof).in_units('Msun')
     cs_prof = transpose_unyt(cs_prof).in_units('km/s')
     csquad_prof = transpose_unyt(csquad_prof).in_units('km/s')
+
+    if (take_log):
+        mass_path = os.path.join(os.getcwd(), f"{MASS_FOLDER}_log", f"{str(ds)}_enclosed_mass.h5")
+    else :
+        mass_path = os.path.join(os.getcwd(), f"{MASS_FOLDER}_lin", f"{str(ds)}_enclosed_mass.h5")
+    df = h5py.File(mass_path, 'r')
+    tot_mass_prof = unyt_array(list(df['total_mass/array_data']), 'Msun')
     
     tff_norm_ratio = ( (np.pi / np.sqrt(8 * G)) * cs_prof * np.sqrt(radii / mtot_prof) ).in_units('')
     tff_turb_ratio = ( (np.pi / np.sqrt(8 * G)) * csquad_prof * np.sqrt(radii / mtot_prof) ).in_units('')
@@ -60,9 +65,24 @@ def bonnor_ebert(node, outdir='.', nbins=120, take_log= False):
     tff_turb_ratio.write_hdf5(fpath, info={'time':ds.current_time, 'dump': str(ds)}, group_name='tff_ratio_turb')
     tcool_norm_ratio.write_hdf5(fpath, info={'time':ds.current_time, 'dump': str(ds)}, group_name='tcool_ratio_norm')
     tcool_turb_ratio.write_hdf5(fpath, info={'time':ds.current_time, 'dump': str(ds)}, group_name='tcool_ratio_turb')
-    mtot_prof.write_hdf5(fpath, info={'time':ds.current_time, 'dump': str(ds)}, group_name='mass')
     radii.write_hdf5(fpath, info={'time':ds.current_time, 'dump': str(ds)}, group_name='radius')
-    
+
+    fpath = os.path.join(os.getcwd(), outdir, f"{str(ds)}_cs_profiles.h5")
+    cs_prof.write_hdf5(fpath, info={'time':ds.current_time, 'dump': str(ds)}, group_name='cs')
+    csquad_prof.write_hdf5(fpath, info={'time':ds.current_time, 'dump': str(ds)}, group_name='cs_quad')
+
+
+
+def perform_test(node):
+
+    ds = node.ds
+    sp = ds.sphere(unyt_array([2000, 2000, 2000], 'pc'), unyt_quantity(200, 'pc'))
+    z = sp.quantities.weighted_average_quantity(('gas', 'vturb'), ('gas', 'cell_mass'))
+    print(z)
+    y = sp.quantities.weighted_average_quantity(('gas', 'cs_quad'), ('gas', 'cell_mass'))
+    print(y)
+    x = sp.quantities.weighted_average_quantity(('gas', 'sound_speed'), ('gas', 'cell_mass'))
+    print(x)    
 
 
 
@@ -81,6 +101,7 @@ if __name__ == "__main__":
     ap = AnalysisPipeline()
     ap.add_operation(yt_dataset, data_dir, add_fields=True)
     #ap.add_operation(yt_dataset, data_dir, es)
+    ap.add_operation(perform_test)
     ap.add_operation(return_sphere)
     ap.add_operation(align_sphere)
     

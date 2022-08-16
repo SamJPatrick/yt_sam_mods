@@ -1,7 +1,7 @@
-import statistics
 import numpy as np
 import os
 import yt
+import h5py
 yt.enable_parallelism()
 import ytree
 
@@ -10,11 +10,11 @@ from yt.data_objects.level_sets.api import Clump, find_clumps, add_validator
 
 from ytree.analysis import AnalysisPipeline
 
-from yt.extensions.p2p.misc import return_sphere, align_sphere, transpose_unyt
-from yt.extensions.p2p.profiles import my_profile
-from yt.extensions.p2p.plots import *
-from yt.extensions.p2p.tree_analysis_operations import yt_dataset, garbage_collect, delattrs
-from yt.extensions.p2p import add_p2p_fields
+from yt.extensions.sam_mods.misc import return_sphere, align_sphere, transpose_unyt
+from yt.extensions.sam_mods.profiles import my_profile
+from yt.extensions.sam_mods.plots import *
+from yt.extensions.sam_mods.tree_analysis_operations import yt_dataset, garbage_collect, delattrs
+from yt.extensions.sam_mods import add_p2p_fields
 
 from yt import derived_field
 from unyt import unyt_quantity, unyt_array
@@ -28,15 +28,8 @@ def turb_vs_accretion(node, outdir='.', nbins=120, take_log= False):
     ds = node.ds
     sphere = node.sphere
     
-    dx = ds.index.get_smallest_dx()
-    ds.add_field(('gas', 'mass_flux'), function= multiply_fields(ds, ('gas', 'density'), ('gas', 'radial_velocity')), \
-                 sampling_type='local', units='kg*s**(-1)*m**(-2)', take_log= False)
-    ds.add_field(('gas', 'intrinsic_energy_density'), function= _intrinsic_energy_density, \
-                 sampling_type='local', units='kg*m**(-1)*s**(-2)', take_log= False)
-    ds.add_field(('gas', 'energy_flux'), function= multiply_fields(ds, ('gas', 'intrinsic_energy_density'), ('gas', 'radial_velocity')), \
-                 sampling_type='local', units='kg*s**(-3)', take_log= False)
-        
-    profile = my_profile(sphere, 'radius', ('gas', 'vturb'), logs={'radius': take_log}, n_bins= nbins, weight_field= ('gas', 'cell_mass'))
+    dx = ds.index.get_smallest_dx()        
+    profile = my_profile(sphere, 'radius', [('gas', 'vturb')], logs={'radius': take_log}, n_bins= nbins, weight_field= ('gas', 'cell_mass'))
     radii = profile.x_bins[1:].in_units('pc')
     vturb_shell_prof = profile[('gas', 'vturb')].in_units('km/s')
     
@@ -112,6 +105,15 @@ def turb_vs_accretion(node, outdir='.', nbins=120, take_log= False):
 
 
 
+def perform_test(node):
+
+    ds = node.ds
+    sp = ds.sphere(unyt_array([2000, 2000, 2000], 'pc'), unyt_quantity(200, 'pc'))
+    y = sp.quantities.weighted_average_quantity(('gas', 'mass_flux'), ('gas', 'cell_mass'))
+    print(y)
+    x = sp.quantities.weighted_average_quantity(('gas', 'energy_flux'), ('gas', 'cell_mass'))
+    print(x)
+
 
 if __name__ == "__main__":
 
@@ -126,7 +128,9 @@ if __name__ == "__main__":
         a.add_vector_field("icom_gas2_position")
 
     ap = AnalysisPipeline()
-    ap.add_operation(yt_dataset, data_dir, es)
+    ap.add_operation(yt_dataset, data_dir)
+    #ap.add_operation(yt_dataset, data_dir, es)
+    ap.add_operation(perform_test)
     ap.add_operation(return_sphere)
     ap.add_operation(align_sphere)
     
