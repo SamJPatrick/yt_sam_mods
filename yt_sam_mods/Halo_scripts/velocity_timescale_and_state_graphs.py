@@ -24,51 +24,6 @@ from grid_figure import GridFigure
 
 
 
-def all_profiles(ap, outdir='.'):
-    
-    x_bin_field = ("index", "radius")
-    profile_fields = [("gas", "cell_mass")]
-    weight_field = None
-    pkwargs = {"accumulation": False, "bin_density": 20}
-    
-    _fields = {#"velocity_magnitude": {"units": "km/s", "log": False},
-               #"velocity_spherical_radius": {"units": "km/s", "log": False},
-               #"velocity_spherical_theta": {"units": "km/s", "log": False},
-               #"velocity_spherical_phi": {"units": "km/s", "log": False},
-               #"tangential_velocity_magnitude": {"units": "km/s", "log": False},
-               #"sound_speed": {"units": "km/s", "log": False},
-               "vortical_time": {"units": "yr", "log": True},
-               "cooling_time": {"units": "yr", "log": True},
-               "dynamical_time": {"units": "yr", "log": True},
-               "total_dynamical_time": {"units": "yr", "log": True}}
-    my_fields = [("gas", field) for field in _fields]
-    for field in my_fields:
-        my_kwargs = pkwargs.copy()
-        my_kwargs["logs"] = {x_bin_field: True, field: _fields[field[1]]["log"]}
-        my_kwargs["units"] = {x_bin_field: "pc", field: _fields[field[1]]["units"]}
-        ap.add_operation(node_profile, [x_bin_field, field], profile_fields, weight_field,
-                         profile_kwargs=my_kwargs, output_dir=output_dir)
-
-    my_kwargs = pkwargs.copy()
-    my_kwargs["logs"] = {x_bin_field: True}
-    my_kwargs["units"] = {x_bin_field: "pc"}
-    for field in my_fields:
-        my_kwargs["logs"][field] = _fields[field[1]]["log"]
-        my_kwargs["units"][field] = _fields[field[1]]["units"]
-    ap.add_operation(node_profile, [x_bin_field], my_fields, ("gas", "cell_mass"),
-                     profile_kwargs=my_kwargs, output_dir=output_dir)
-
-    # 1D mass vs. radius profiles to get circular velocity
-    mass_fields = [("gas", "cell_mass"),
-                   ("gas", "dark_matter_mass"),
-                   ("gas", "matter_mass")]
-    my_kwargs = pkwargs.copy()
-    my_kwargs["logs"] = {x_bin_field: True}
-    my_kwargs["units"] = {x_bin_field: "pc"}
-    ap.add_operation(node_profile, [x_bin_field], mass_fields, weight_field,
-                     profile_kwargs=my_kwargs, output_dir=output_dir)
-
-
 
 def plot_velocity_profiles(node, indir= '.', outdir='.'):
 
@@ -197,9 +152,10 @@ def plot_timescale_profiles(node, indir='.', outdir='.'):
     for i in range (len(x_data) - 1):
         if (profile_dict['cooling_time'][i] < profile_dict['total_dynamical_time'][i]):
             pyplot.axvspan(x_data[i], x_data[i+1], facecolor= bkgcolor[0], alpha=0.5)
-        elif (profile_dict['total_dynamical_time'][i] < profile_dict['turbulent_sound_crossing_time'][i].to('yr')):
+        elif (profile_dict['total_dynamical_time'][i] < profile_dict['turbulent_sound_crossing_time'][i] and \
+              profile_dict['total_dynamical_time'][i] < profile_dict['sound_crossing_time'][i]):
             pyplot.axvspan(x_data[i], x_data[i+1], facecolor= bkgcolor[1], alpha=0.5)
-        elif (profile_dict['total_dynamical_time'][i] < profile_dict['sound_crossing_time'][i].to('yr')):
+        elif (profile_dict['total_dynamical_time'][i] < profile_dict['sound_crossing_time'][i]):
             pyplot.axvspan(x_data[i], x_data[i+1], facecolor= bkgcolor[2], alpha=0.5)
     
     my_axes.yaxis.set_label_text("t [yr]")
@@ -207,6 +163,63 @@ def plot_timescale_profiles(node, indir='.', outdir='.'):
     fpath = os.path.join(os.getcwd(), outdir, f"{str(dsfn)}_timescale_profiles.png")
     pyplot.savefig(fpath)
     pyplot.close()
+
+
+
+def create_state_data(node, indir='.', outdir='.'):
+   
+    dsfn = node.ds_filename.split('/')[-1]
+    filename = os.path.join(indir, f"{str(dsfn)}_1D_profile_radius_cell_mass.h5")
+    df = yt.load(filename)
+    used = df.profile.used
+    x_data = df.profile.x[used].to("pc")
+
+    profile_dict = {}
+    fields = ["turbulent_sound_crossing_time", "sound_crossing_time", "total_dynamical_time", \
+              "cooling_time", "vortical_time"]
+    for field in fields:
+        if (field == "sound_crossing_time"):
+            cs = df.profile[('data', 'sound_speed')][used]
+            y_sc = (2 * x_data / cs)
+            profile_dict[field] = y_sc.to('yr')
+        elif (field == "turbulent_sound_crossing_time"):
+            #cs = df.profile[('data', 'sound_speed')][used]
+            vt = df.profile.standard_deviation[('data', 'velocity_magnitude')][used]
+            #v = np.sqrt(cs**2 + vt**2)
+            y_sct = (2 * x_data / vt)
+            profile_dict[field] = y_sct.to('yr')
+        else:
+            profile_dict[field] = df.profile[('data', field)][used].to('yr')
+
+    cell_mass = df.profile.weight[used].in_units('Msun')
+    state_dict = {'frag':unyt_array([0.0 for i in range (len(x_data))], 'Msun'),
+                  'support':unyt_array([0.0 for i in range (len(x_data))], 'Msun'),
+                  'collapse':unyt_array([0.0 for i in range (len(x_data))], 'Msun')}
+    for i in range (len(x_data) - 1):
+        if (profile_dict['cooling_time'][i] < profile_dict['total_dynamical_time'][i]):
+            state_dict['frag'][i] = cell_mass[i]
+        elif (profile_dict['total_dynamical_time'][i] < profile_dict['turbulent_sound_crossing_time'][i] and \
+              profile_dict['total_dynamical_time'][i] < profile_dict['sound_crossing_time'][i]):
+            state_dict['collapse'][i] = cell_mass[i]
+        elif (profile_dict['total_dynamical_time'][i] < profile_dict['sound_crossing_time'][i]):
+            state_dict['support'][i] = cell_mass[i]
+
+    gas_mass = unyt_array(np.zeros(len(state_dict.keys())), 'Msun')
+    gas_frac = unyt_array(np.zeros(len(state_dict.keys())), '')
+    mean_radius = unyt_array(np.zeros(len(state_dict.keys())), 'pc')
+    radius_frac = unyt_array(np.zeros(len(state_dict.keys())), '')
+    for i, state in enumerate(state_dict.keys()):
+        gas_mass[i] = sum(state_dict[state])
+        gas_frac[i] = gas_mass[i] / sum(cell_mass)
+        mean_radius[i] = sum([x_data[i] * mass for i, mass in enumerate(state_dict[state])]) / gas_mass[i]
+        radius_frac[i] = mean_radius[i] / x_data[-1]
+    
+    state_fn = os.path.join(outdir, f"{str(dsfn)}_state_info.h5")
+    gas_mass.write_hdf5(state_fn, dataset_name='gas mass')
+    gas_frac.write_hdf5(state_fn, dataset_name='gas fraction')
+    mean_radius.write_hdf5(state_fn, dataset_name='mean radius')
+    radius_frac.write_hdf5(state_fn, dataset_name='radius fraction')
+
 
 
 
@@ -227,14 +240,10 @@ if __name__ == "__main__":
 
     ap = AnalysisPipeline()
     ap.add_operation(yt_dataset, data_dir, add_fields= False, load_data=False)
-    #ap.add_operation(yt_dataset, data_dir, es)
-    #ap.add_operation(modify_grackle)
-    #ap.add_operation(return_sphere)
-    #ap.add_operation(align_sphere)
    
-    #ap.add_recipe(all_profiles, outdir='Profiles/Velocities_and_timescales_nocmb')
-    #ap.add_operation(plot_velocity_profiles, indir='Profiles/Velocities_and_timescales', outdir='Profiles/Velocities')
-    ap.add_operation(plot_timescale_profiles, indir='Profiles/Velocities_and_timescales', outdir='Profiles/Timescales_oshea')
+    ap.add_operation(plot_velocity_profiles, indir='Profiles/Velocities_and_timescales', outdir='Profiles/Velocities')
+    ap.add_operation(plot_timescale_profiles, indir='Profiles/Velocities_and_timescales', outdir='Profiles/Timescales')
+    ap.add_operation(create_state_data, indir='Profiles/Velocities_and_timescales', outdir='State_data')
     
     ap.add_operation(delattrs, ["sphere", "ds"], always_do=True)
     ap.add_operation(garbage_collect, 60, always_do=True)
