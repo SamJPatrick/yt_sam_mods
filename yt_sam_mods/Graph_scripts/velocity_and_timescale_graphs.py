@@ -27,7 +27,7 @@ from grid_figure import GridFigure
 
 def plot_velocity_profiles(node, indir= '.', outdir='.'):
 
-    ds = node.ds    
+    dsfn = node.ds_filename.split('/')[-1]
     my_fig = GridFigure(1, 1, figsize=(6, 4.5),
                         top_buffer = 0.14, bottom_buffer = 0.12,
                         left_buffer = 0.09, right_buffer = 0.02)
@@ -42,12 +42,12 @@ def plot_velocity_profiles(node, indir= '.', outdir='.'):
     # http://www.colourlovers.com/palette/1329926/graphic_artist.
     # colors = ["#B00029", "#90B004", "#19849C", "#851370", "#544D4D", "black"]
     for i, field in enumerate(fields):
-        filename = os.path.join(indir, f"{str(ds)}_2D_profile_radius_{field}_None.h5")
+        filename = os.path.join(indir, f"{str(dsfn)}_2D_profile_radius_{field}_None.h5")
         plot_profile_distribution(my_axes, filename, 'cell_mass',
                                   x_units="pc", y_units='km/s', alpha_scale=0.7,
                                   pkwargs=dict(color=colors[i], linewidth=1))
 
-    fn = os.path.join(indir, f"{str(ds)}_1D_profile_radius_cell_mass.h5")
+    fn = os.path.join(indir, f"{str(dsfn)}_1D_profile_radius_cell_mass.h5")
     pds = yt.load(fn)
     pradius = pds.profile.x.to("pc")
     vsigma = pds.profile.standard_deviation['data', 'velocity_magnitude'].to("km/s")
@@ -55,7 +55,7 @@ def plot_velocity_profiles(node, indir= '.', outdir='.'):
                  linewidth=1, color=colors[4], zorder=998)
 
     field = "matter_mass"
-    fn = os.path.join(indir, f"{str(ds)}_1D_profile_radius_None.h5")
+    fn = os.path.join(indir, f"{str(dsfn)}_1D_profile_radius_None.h5")
     mds = yt.load(fn)
     radius = mds.profile.x.to("pc")
     mass = mds.profile[field]
@@ -79,9 +79,10 @@ def plot_velocity_profiles(node, indir= '.', outdir='.'):
     dist = [True]*4 + [False]*2
     plot_items = list(zip(colors, labels, dist))
     plot_profile_distribution_legend(my_axes, plot_items, alpha_scale=0.7)
-    fpath = os.path.join(os.getcwd(), outdir, f"{str(ds)}_velocity_profiles.png")
+    fpath = os.path.join(os.getcwd(), outdir, f"{str(dsfn)}_velocity_profiles.png")
     pyplot.savefig(fpath)
     pyplot.close()
+
 
 
 
@@ -95,7 +96,8 @@ def plot_timescale_profiles(node, indir='.', outdir='.'):
     my_axes.set_xscale('log')
     my_axes.set_yscale('log')
 
-    xlim = (5e-3, 3e2)
+    xlim = (1e-2, 5e2)
+    #xlim = (1e-2, 1e7)
     tx = twin_unit_axes(my_axes, xlim, "r", "pc", top_units="AU")
     fields = ["turbulent_sound_crossing_time",
               "sound_crossing_time",
@@ -121,6 +123,7 @@ def plot_timescale_profiles(node, indir='.', outdir='.'):
     df = yt.load(filename)
     used = df.profile.used
     x_data = df.profile.x[used].to("pc")
+    cell_mass = df.profile.weight[used].to("Msun")
     
     profile_dict = {}
     for field, unit, label, color in zip(fields, units, labels, colors):
@@ -139,6 +142,8 @@ def plot_timescale_profiles(node, indir='.', outdir='.'):
 
         my_axes.plot(x_data, profile_dict[field], color=color,
                      alpha=0.7, linewidth=1.5, label=label)
+        #my_axes.plot(cell_mass, profile_dict[field], color=color,
+        #             alpha=0.7, linewidth=1.5, label=label)
 
     ylim = (1e4, 1e9)
     ymajor = np.logspace(2, 10, 5)
@@ -168,75 +173,13 @@ def plot_timescale_profiles(node, indir='.', outdir='.'):
 
 
 
-def create_state_data(node, indir='.', outdir='.'):
-   
-    dsfn = node.ds_filename.split('/')[-1]
-    filename = os.path.join(indir, f"{str(dsfn)}_1D_profile_radius_cell_mass.h5")
-    df = yt.load(filename)
-    used = df.profile.used
-    x_data = df.profile.x[used].to("pc")
-
-    profile_dict = {}
-    fields = ["turbulent_sound_crossing_time", "sound_crossing_time", "total_dynamical_time", \
-              "cooling_time", "vortical_time"]
-    for field in fields:
-        if (field == "sound_crossing_time"):
-            cs = df.profile[('data', 'sound_speed')][used]
-            y_sc = (2 * x_data / cs)
-            profile_dict[field] = y_sc.to('yr')
-        elif (field == "turbulent_sound_crossing_time"):
-            #cs = df.profile[('data', 'sound_speed')][used]
-            vt = df.profile.standard_deviation[('data', 'velocity_magnitude')][used]
-            #v = np.sqrt(cs**2 + vt**2)
-            y_sct = (2 * x_data / vt)
-            profile_dict[field] = y_sct.to('yr')
-        else:
-            profile_dict[field] = df.profile[('data', field)][used].to('yr')
-
-    cell_mass = df.profile.weight[used].in_units('Msun')
-    state_dict = {'frag':unyt_array([0.0 for i in range (len(x_data))], 'Msun'),
-                  'support_turb':unyt_array([0.0 for i in range (len(x_data))], 'Msun'),
-                  'collapse':unyt_array([0.0 for i in range (len(x_data))], 'Msun'),
-                  'support_pressure':unyt_array([0.0 for i in range (len(x_data))], 'Msun')}
-    for i in range (len(x_data) - 1):
-        if (profile_dict['cooling_time'][i] < profile_dict['total_dynamical_time'][i]):
-            state_dict['frag'][i] = cell_mass[i]
-        elif (profile_dict['total_dynamical_time'][i] < profile_dict['turbulent_sound_crossing_time'][i] and \
-              profile_dict['total_dynamical_time'][i] < profile_dict['sound_crossing_time'][i]):
-            state_dict['collapse'][i] = cell_mass[i]
-        elif (profile_dict['total_dynamical_time'][i] < profile_dict['sound_crossing_time'][i]):
-            state_dict['support_turb'][i] = cell_mass[i]
-        else :
-            state_dict['support_pressure'][i] = cell_mass[i]
-
-    gas_mass = unyt_array(np.zeros(len(state_dict.keys())), 'Msun')
-    gas_frac = unyt_array(np.zeros(len(state_dict.keys())), '')
-    mean_radius = unyt_array(np.zeros(len(state_dict.keys())), 'pc')
-    radius_frac = unyt_array(np.zeros(len(state_dict.keys())), '')
-    for i, state in enumerate(state_dict.keys()):
-        gas_mass[i] = sum(state_dict[state])
-        gas_frac[i] = gas_mass[i] / sum(cell_mass)
-        mean_radius[i] = sum([x_data[i] * mass for i, mass in enumerate(state_dict[state])]) / gas_mass[i]
-        radius_frac[i] = mean_radius[i] / x_data[-1]
-    
-    state_fn = os.path.join(outdir, f"{str(dsfn)}_state_info.h5")
-    gas_mass.write_hdf5(state_fn, dataset_name='gas mass')
-    gas_frac.write_hdf5(state_fn, dataset_name='gas fraction')
-    mean_radius.write_hdf5(state_fn, dataset_name='mean radius')
-    radius_frac.write_hdf5(state_fn, dataset_name='radius fraction')
-
-
-
-
-
-
 
 if __name__ == "__main__":
 
-    output_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo/minihalo_analysis"
-    sim_path = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo/simulation.h5"
-    data_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo"
-    tree_path= "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo/merger_trees/target_halos/target_halos.h5"
+    output_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/cc_512_collapse_solar_dust/minihalo_analysis"
+    sim_path = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/cc_512_collapse_solar_dust/simulation.h5"
+    data_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/cc_512_collapse_solar_dust"
+    tree_path= "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/cc_512_collapse_solar_dust/merger_trees/target_halos/target_halos.h5"
 
     es = yt.load(sim_path)
     a = ytree.load(tree_path)
@@ -246,9 +189,8 @@ if __name__ == "__main__":
     ap = AnalysisPipeline()
     ap.add_operation(yt_dataset, data_dir, add_fields= False, load_data=False)
    
-    #ap.add_operation(plot_velocity_profiles, indir='Profiles/Velocities_and_timescales', outdir='Profiles/Velocity_graphs')
-    ap.add_operation(plot_timescale_profiles, indir='Profiles/Velocity_and_timescale_profiles', outdir='Profiles/Timescale_graphs')
-    ap.add_operation(create_state_data, indir='Profiles/Velocity_and_timescale_profiles', outdir='State_data')
+    ap.add_operation(plot_velocity_profiles, indir='CC_512_collapse_solar_dust_data/Profiles/Velocity_and_timescale_profiles', outdir='CC_512_collapse_solar_dust_data/Profiles/Velocity_graphs')
+    ap.add_operation(plot_timescale_profiles, indir='CC_512_collapse_solar_dust_data/Profiles/Velocity_and_timescale_profiles', outdir='CC_512_collapse_solar_dust_data/Profiles/Timescale_graphs')
     
     ap.add_operation(delattrs, ["sphere", "ds"], always_do=True)
     ap.add_operation(garbage_collect, 60, always_do=True)

@@ -24,20 +24,23 @@ from grid_figure import GridFigure
 
 
 
+BIN_DENSITY = 20
+
 
 def all_profiles(ap, outdir='.'):
     
     x_bin_field = ("index", "radius")
     profile_fields = [("gas", "cell_mass")]
     weight_field = None
-    pkwargs = {"accumulation": False, "bin_density": 20}
+    pkwargs = {"accumulation": False, "bin_density": BIN_DENSITY}
+    fpath = os.path.join(os.getcwd(), outdir)
     
-    _fields = {#"velocity_magnitude": {"units": "km/s", "log": False},
-               #"velocity_spherical_radius": {"units": "km/s", "log": False},
-               #"velocity_spherical_theta": {"units": "km/s", "log": False},
-               #"velocity_spherical_phi": {"units": "km/s", "log": False},
-               #"tangential_velocity_magnitude": {"units": "km/s", "log": False},
-               #"sound_speed": {"units": "km/s", "log": False},
+    _fields = {"velocity_magnitude": {"units": "km/s", "log": False},
+               "velocity_spherical_radius": {"units": "km/s", "log": False},
+               "velocity_spherical_theta": {"units": "km/s", "log": False},
+               "velocity_spherical_phi": {"units": "km/s", "log": False},
+               "tangential_velocity_magnitude": {"units": "km/s", "log": False},
+               "sound_speed": {"units": "km/s", "log": False},
                "vortical_time": {"units": "yr", "log": True},
                "cooling_time": {"units": "yr", "log": True},
                "dynamical_time": {"units": "yr", "log": True},
@@ -48,7 +51,7 @@ def all_profiles(ap, outdir='.'):
         my_kwargs["logs"] = {x_bin_field: True, field: _fields[field[1]]["log"]}
         my_kwargs["units"] = {x_bin_field: "pc", field: _fields[field[1]]["units"]}
         ap.add_operation(node_profile, [x_bin_field, field], profile_fields, weight_field,
-                         profile_kwargs=my_kwargs, output_dir=output_dir)
+                         profile_kwargs=my_kwargs, output_dir=fpath)
 
     my_kwargs = pkwargs.copy()
     my_kwargs["logs"] = {x_bin_field: True}
@@ -57,7 +60,7 @@ def all_profiles(ap, outdir='.'):
         my_kwargs["logs"][field] = _fields[field[1]]["log"]
         my_kwargs["units"][field] = _fields[field[1]]["units"]
     ap.add_operation(node_profile, [x_bin_field], my_fields, ("gas", "cell_mass"),
-                     profile_kwargs=my_kwargs, output_dir=output_dir)
+                     profile_kwargs=my_kwargs, output_dir=fpath)
 
     # 1D mass vs. radius profiles to get circular velocity
     mass_fields = [("gas", "cell_mass"),
@@ -67,7 +70,7 @@ def all_profiles(ap, outdir='.'):
     my_kwargs["logs"] = {x_bin_field: True}
     my_kwargs["units"] = {x_bin_field: "pc"}
     ap.add_operation(node_profile, [x_bin_field], mass_fields, weight_field,
-                     profile_kwargs=my_kwargs, output_dir=output_dir)
+                     profile_kwargs=my_kwargs, output_dir=fpath)
 
 
 
@@ -85,13 +88,13 @@ if __name__ == "__main__":
         a.add_vector_field("icom_gas2_position")
 
     ap = AnalysisPipeline()
-    ap.add_operation(yt_dataset, data_dir, add_fields= False)
+    ap.add_operation(yt_dataset, data_dir, add_fields= True)
     #ap.add_operation(yt_dataset, data_dir, es)
     ap.add_operation(modify_grackle)
     ap.add_operation(return_sphere)
     ap.add_operation(align_sphere)
    
-    ap.add_recipe(all_profiles, outdir='Profiles/Velocities_and_timescales_nocmb')
+    ap.add_recipe(all_profiles, outdir='Profiles/Velocity_and_timescale_profiles_nocmb')
    
     ap.add_operation(delattrs, ["sphere", "ds"], always_do=True)
     ap.add_operation(garbage_collect, 60, always_do=True)

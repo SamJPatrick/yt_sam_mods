@@ -9,22 +9,14 @@ import matplotlib
 matplotlib.use('AGG')
 import matplotlib.pyplot as plt
 
-
-def get_time(profile):
-
-    sim_path = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo/simulation.h5"
-
-    dump = re.search(r'^(DD[0-9]{4})_state_info.h5', profile).group(1)
-    fname = '/'.join([dump, dump]).encode()
-    sim = yt.load(sim_path)
-    time = sim.data['time'][np.where(sim.data['filename'] == fname)][0].in_units('Myr')
-    return time
+from yt.extentions.sam_mods.graph_funcs import get_time_z
 
 
 
-states = ['frag', 'support', 'collapse']
+
+states = ['frag', 'support_turb', 'collapse', 'support_pressure']
 filenames = glob.glob("DD*_state_info.h5")
-filenames.sort(key= get_time)
+filenames.sort(key= lambda x: get_time_z(x)[0])
 times = unyt_array(np.zeros(len(filenames)), 'Myr')
 
 gas_masses = [unyt_array(np.zeros(len(filenames)), 'Msun') for state in states]
@@ -32,17 +24,17 @@ gas_frac = [unyt_array(np.zeros(len(filenames)), '') for state in states]
 mean_radii = [unyt_array(np.zeros(len(filenames)), 'pc') for state in states]
 radius_frac = [unyt_array(np.zeros(len(filenames)), '') for state in states]
 for i, name in enumerate(filenames):
-    times[i] = get_time(name)
+    times[i] = get_time_z(name)[0]
     state_info = h5py.File(name, 'r')
     for j, state in enumerate(states):
-        gas_masses[j][i] = state_info['gas mass'][j]
-        gas_frac[j][i] = state_info['gas fraction'][j]
-        mean_radii[j][i] = state_info['mean radius'][j]
-        radius_frac[j][i] = state_info['radius fraction'][j]
+        gas_masses[j][i] = state_info['gas_mass'][j]
+        gas_frac[j][i] = state_info['gas_fraction'][j]
+        mean_radii[j][i] = state_info['mean_radius'][j]
+        radius_frac[j][i] = state_info['radius_fraction'][j]
 
 
 plt.figure()
-#plt.title()
+plt.title("Mass of different gas phases")
 for i, state in enumerate(gas_masses):
     plt.plot(times.in_units('Myr'), state.in_units('Msun'), label= states[i])
 plt.xlabel("Time (Myr)")
@@ -54,7 +46,7 @@ plt.savefig("gas_masses_vs_times.png")
 plt.close()
 
 plt.figure()
-#plt.title()
+plt.title("Mass weighted mean radius of different gas phases")
 for i, state in enumerate(mean_radii):
     plt.plot(times.in_units('Myr'), state.in_units('pc'), label= states[i])
 plt.xlabel("Time (Myr)")
@@ -65,7 +57,7 @@ plt.savefig("mean_radii_vs_time.png")
 plt.close()
 
 plt.figure()
-#plt.title()
+plt.title("Mass (as fraction of total) of different gas phases")
 for i, state in enumerate(gas_frac):
     plt.plot(times.in_units('Myr'), state.in_units(''), label= states[i])
 plt.xlabel("Time (Myr)")
@@ -76,7 +68,7 @@ plt.savefig("gas_fracion_vs_time.png")
 plt.close()
 
 plt.figure()
-#plt.title()
+plt.title("Mass weighted mean radius (as fraction of virial) of different gas phases")
 for i, state in enumerate(radius_frac):
     plt.plot(times.in_units('Myr'), state.in_units(''), label= states[i])
 plt.xlabel("Time (Myr)")

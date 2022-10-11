@@ -105,6 +105,14 @@ def _tangential_velocity_magnitude(field, data):
 
 
 
+def _mass_accretion_rate(field, data):
+    return - 4 * np.pi * data[('index', 'radius')]**2 * data[('gas', 'density')] * data[('gas', 'velocity_spherical_radius')]
+
+def _metal_mass_accretion_rate(field, data):
+    return - 4 * np.pi * data[('index', 'radius')]**2 * data[('gas', 'density')] * data[('gas', 'metallicity3')] * data[('gas', 'velocity_spherical_radius')]
+
+
+
 def _total_dynamical_time(field, data):
     return np.sqrt(3.0 * np.pi / (16.0 * data[('gas', 'matter_density')] * G))
 
@@ -205,6 +213,13 @@ def add_p2p_fields(ds):
     add_p2p_field(ds, ('gas', 'tangential_velocity_magnitude'),
                   function=_tangential_velocity_magnitude,
                   units='km/s', sampling_type='cell')
+
+    add_p2p_field(ds, ('gas', 'accretion_rate'),
+                  function=_mass_accretion_rate,
+                  units='Msun/yr', sampling_type='cell')
+    add_p2p_field(ds, ('gas', 'accretion_rate_z'),
+                  function=_metal_mass_accretion_rate,
+                  units='Msun/yr', sampling_type='cell')
 
     add_p2p_field(ds, ('gas', 'total_dynamical_time'),
                   function=_total_dynamical_time,
