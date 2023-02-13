@@ -45,31 +45,32 @@ def load_model_profiles(star_id,
     times = es.data["time"].to("Myr")
     fns = es.data["filename"].astype(str)
 
-    global _model_stars
-    if _model_stars is None:
-        _model_stars = get_star_data(stars_fn)
-    star_data = _model_stars
-
-    ct = star_data[star_id]["creation_time"]
+    if star_id is None:
+        ct = np.inf
+    else:
+        global _model_stars
+        if _model_stars is None:
+            _model_stars = get_star_data(stars_fn)
+        star_data = _model_stars        
+        ct = star_data[star_id]["creation_time"]
 
     dsfns = defaultdict(list)
     weights = ["None", "cell_volume", "cell_mass"]
 
     for t, fn in zip(times, fns):
-        if t <= ct:
-            pdir = "icom_gas_position"
-            to_get = ["None", "cell_volume", "cell_mass"]
-        else:
-            pdir = "icom_all_position"
-            to_get = ["None", "cell_volume"]
+
+        to_get = ['None', 'cell_mass']
+        #if t <= ct:
+        #    to_get = ["None", "cell_volume", "cell_mass"]
+        #else:
+        #    to_get = ["None", "cell_volume"]
 
         exists = 0
         these_fns = {}
         for weight in weights:
             if weight in to_get:
                 basename = f"{os.path.basename(fn)}_profile_weight_field_{weight}.h5"
-                my_fn = os.path.join(
-                    data_dir, f"star_{star_id}", "profiles", pdir, basename)
+                my_fn = os.path.join(data_dir, basename)
                 if os.path.exists(my_fn):
                     exists += 1
             else:
@@ -237,9 +238,10 @@ def find_peaks(ds, bin_field, peak_field, time_index):
     i_peaks = basin_peak_ids(peak_data)
     i_peaks = i_peaks[bin_data[i_peaks] < 1e4]
 
-    # if peak is above 1, include the innermost coordinate that is above 1
+    # if peak is above 1, include the inner/outermost coordinate above 1
     if peak_data.max() > 1:
         i_peaks = np.append(i_peaks, np.where(peak_data > 1)[0].min())
+        i_peaks = np.append(i_peaks, np.where(peak_data > 1)[0].max())
 
     if i_peaks.size == 0:
         i_peaks = np.append(i_peaks, np.argmax(peak_data))
@@ -250,18 +252,22 @@ def find_peaks(ds, bin_field, peak_field, time_index):
     i_peaks.sort()
     return i_peaks
 
-def create_profile_cube(star_id, output_dir="star_cubes"):
+def create_profile_cube(star_id, output_dir="star_cubes",
+                        data_dir="star_minihalos"):
     ### Bonnor-Ebert Mass constant
     a = 1.67
     b = (225 / (32 * np.sqrt(5 * np.pi))) * a**-1.5
 
     ensure_dir(output_dir)
 
-    star_data = get_star_data("star_hosts.yaml")
-    my_star = star_data[star_id]
-    creation_time = my_star["creation_time"]
+    if star_id is None:
+        creation_time = np.inf
+    else:
+        star_data = get_star_data("star_hosts.yaml")
+        my_star = star_data[star_id]
+        creation_time = my_star["creation_time"]
 
-    profiles = load_model_profiles(star_id)
+    profiles = load_model_profiles(star_id, data_dir=data_dir)
     profile_data = []
     time_data = []
 
@@ -276,7 +282,7 @@ def create_profile_cube(star_id, output_dir="star_cubes"):
     for i, profile_dict in enumerate(profiles):
         pbar.update(i+1)
         npds = profile_dict["None"]
-        vpds = profile_dict["cell_volume"]
+        # vpds = profile_dict["cell_volume"]
         mpds = profile_dict["cell_mass"]
 
         time_data.append(npds.current_time)
@@ -290,42 +296,45 @@ def create_profile_cube(star_id, output_dir="star_cubes"):
         dark_matter_mass_enclosed = m_dm.cumsum()
         total_mass_enclosed = gas_mass_enclosed + dark_matter_mass_enclosed
 
-        gas_density_volume = vpds.data['data', 'density']
-        dark_matter_density_volume = vpds.data['data', 'dark_matter_density']
-        volume_weight = vpds.data['data', 'weight']
+        # gas_density_volume = vpds.data['data', 'density'] 
+        # dark_matter_density_volume = vpds.data['data', 'dark_matter_density']
+        # volume_weight = vpds.data['data', 'weight']
 
         profile_datum = {
             "gas_mass_enclosed": gas_mass_enclosed,
             "total_mass_enclosed": total_mass_enclosed,
             "dark_matter_mass_enclosed": dark_matter_mass_enclosed,
-            "gas_density_volume_weighted": gas_density_volume,
-            "dark_matter_density": dark_matter_density_volume,
-            "cell_volume_weight": volume_weight,
+            # "gas_density_volume_weighted": gas_density_volume,
+            # "dark_matter_density": dark_matter_density_volume,
+            # "cell_volume_weight": volume_weight,
             "used": npds.data['data', 'used'],
         }
 
         current_time = npds.current_time.to("Myr")
         if current_time < creation_time:
-            v_turb = mpds.data['standard_deviation', 'velocity_magnitude']
-            profile_datum["turbulent_velocity"] = v_turb
+            v_turb = mpds.data['standard_deviation', 'velocity_magnitude'] #
+            profile_datum["turbulent_velocity"] = v_turb #
 
-            p = mpds.data['data', 'pressure']
-            cs = mpds.data['data', 'sound_speed']
-            m_BE = (b * (cs**4 / G**1.5) * p**-0.5)
-            profile_datum["bonnor_ebert_ratio"] = (gas_mass_enclosed / m_BE).to("")
+            p = mpds.data['data', 'pressure'] #
+            cs = mpds.data['data', 'sound_speed'] #
+            m_BE = (b * (cs**4 / G**1.5) * p**-0.5) #
+            profile_datum["bonnor_ebert_ratio"] = (gas_mass_enclosed / m_BE).to("") #
 
-            dr = np.diff(x_bins)
-            r = mpds.data['data', 'radius']
-            rho = mpds.data['data', 'density']
-            dP_hyd = (G * total_mass_enclosed * rho * dr / r**2)[used]
-            P_hyd1 = np.flip(np.flip(dP_hyd).cumsum()).to(p.units)
-            P_hydro = np.zeros_like(p)
-            P_hydro[used] = P_hyd1
-            profile_datum["hydrostatic_pressure"] = P_hydro
+            dr = np.diff(x_bins) #
+            r = mpds.data['data', 'radius'] #
+            rho = mpds.data['data', 'density'] #
+            dP_hyd = (G * total_mass_enclosed * rho * dr / r**2)[used] #
+            P_hyd1 = np.flip(np.flip(dP_hyd).cumsum()).to(p.units) #
+            P_hydro = np.zeros_like(p) #
+            P_hydro[used] = P_hyd1 #
+            profile_datum["hydrostatic_pressure"] = P_hydro #
 
-            cs_eff = np.sqrt(cs**2 + v_turb**2)
-            t_cs = (2 * r / cs_eff).to("Myr")
-            profile_datum["sound_crossing_time"] = t_cs
+            #cs_eff = np.sqrt(cs**2 + v_turb**2) #
+            #t_cs = (2 * r / cs_eff).to("Myr") #
+            t_cs =  (2 * r / cs).to("Myr") #
+            profile_datum["sound_crossing_time"] = t_cs #
+            t_turb = (2 * r / v_turb).to("Myr") #
+            profile_datum["turbulent_sound_crossing_time"] = t_turb #
 
             exclude_fields = ['x', 'x_bins', 'used', 'weight', 'dark_matter_density']
             pfields = [field for field in mpds.field_list

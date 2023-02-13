@@ -13,26 +13,34 @@ import matplotlib.pyplot as plt
 from yt.extensions.sam_mods.graph_funcs import get_dump_num, get_title, get_time_z
 
 
-PROF_PATH = "PISN_solo_data/Profiles/Normal_profiles"
-OUTDIR = "PISN_solo_data/Profiles/Enclosed_mass_profiles"
+INDIR = "Profiles/Normal_profiles"
+OUTDIR = "Profiles/Enclosed_mass_graphs"
 
-PROF_PATH = "CC_512_collapse_solar_dust_data/Profiles/Normal_profiles"
-OUTDIR = "CC_512_collapse_solar_dust_data/Profiles/Enclosed_mass_profiles"
 
-filenames = glob.glob(os.path.join(os.getcwd(), PROF_PATH, "DD*_profile_weight_field_None.h5"))
-for pathn in filenames:
+try :
+    star_type = sys.argv[1]
+except IndexError:
+    star_type = ""
+    pass
 
-    dump_name = os.path.basename(pathn)
-    title = get_title(dump_name)
+filenames = glob.glob(os.path.join(os.getcwd(), INDIR, "DD*_profile_weight_field_None.h5"))
+for path in filenames:
+
+    dump_name = os.path.basename(path)
+    title = get_title(dump_name, star_type)
     dump = f"DD{get_dump_num(dump_name)}"
-    normdf = yt.load(pathn)
+    normdf = yt.load(path)
     
     used = normdf.profile.used
     radii = normdf.profile.x[used].to("pc")
     tot_mass = normdf.profile[('data', 'matter_mass')][used].in_units('Msun')
     bary_mass = normdf.profile[('data', 'cell_mass')][used].in_units('Msun')
     metal_mass = normdf.profile[('data', 'metal3_mass')][used].in_units('Msun')
-    assert len(tot_mass) == len(bary_mass) == len(metal_mass), "Error, profiles are of unequal length"
+    if ((len(tot_mass) != len(bary_mass))
+        or (len(bary_mass) != len(metal_mass))
+        or (len(tot_mass) != len(metal_mass))):
+        print("Error, profiles are of unequal length")
+        continue
 
     tot_mass_acml = [sum(tot_mass[:i+1]) for i in range(len(tot_mass))]
     bary_mass_acml = [sum(bary_mass[:i+1]) for i in range(len(bary_mass))]
@@ -52,7 +60,8 @@ for pathn in filenames:
     plt.legend(loc='upper left')
     plt.savefig(os.path.join(OUTDIR, f"{dump}_enclosed_masses.png"))
     plt.close()    
-    
+
+    '''
     bary_frac = bary_mass / tot_mass
     metal_frac = metal_mass / bary_mass
 
@@ -73,3 +82,4 @@ for pathn in filenames:
     plt.title(title)
     plt.savefig(os.path.join(OUTDIR, f"{dump}_enclosed_mass_fractions.png"))
     plt.close()
+    '''

@@ -5,11 +5,7 @@ import h5py
 yt.enable_parallelism()
 import ytree
 
-from yt.frontends.enzo.data_structures import EnzoDataset
-from yt.data_objects.level_sets.api import Clump, find_clumps, add_validator
-
 from ytree.analysis import AnalysisPipeline
-
 from yt.extensions.sam_mods.misc import return_sphere, align_sphere, transpose_unyt
 from yt.extensions.sam_mods.profiles import my_profile
 from yt.extensions.sam_mods.plots import *
@@ -21,6 +17,9 @@ from unyt import unyt_quantity, unyt_array
 from unyt import G, Msun, kb, mh, pc
 
 
+VELDIR = "Profiles/Velocity_profiles"
+NORMDIR = "Profiles/Normal_profiles"
+OUTDIR = "Profiles/Pressure_profiles"
 
 
 def pressures(node, veldir= '.', normdir= '.', outdir='.'):
@@ -72,14 +71,8 @@ if __name__ == "__main__":
         a.add_vector_field("icom_gas2_position")
     
     ap = AnalysisPipeline()
-    ap.add_operation(yt_dataset, data_dir, add_fields=False, load_data=False)
-    #ap.add_operation(yt_dataset, data_dir, es)
-    #ap.add_operation(return_sphere)
-    #ap.add_operation(align_sphere)
-    
-    ap.add_operation(pressures, veldir= 'Profiles/Velocity_and_timescale_profiles', \
-                     normdir= 'Profiles/Normal_profiles', outdir= 'Profiles/Pressure_profiles')
-    
+    ap.add_operation(yt_dataset, data_dir, add_fields=False, load_data=False)   
+    ap.add_operation(pressures, veldir= VELDIR, normdir= NORMDIR, outdir= OUTDIR) 
     ap.add_operation(delattrs, ["sphere", "ds"], always_do=True)
     ap.add_operation(garbage_collect, 60, always_do=True)
 

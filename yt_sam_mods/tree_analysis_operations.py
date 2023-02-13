@@ -9,10 +9,12 @@ import time
 import yaml
 
 from ytree.data_structures.tree_node import TreeNode
+from unyt import unyt_quantity
 
 from yt import load as yt_load
 from yt import ProjectionPlot, ParticleProjectionPlot
 from yt.utilities.logger import ytLogger as mylog
+from yt.extensions.sam_mods.plots import decorate_plot
 from yt.extensions.sam_mods.misc import sphere_icom, reunit
 from yt.extensions.sam_mods.profiles import my_profile
 from yt.extensions.sam_mods import add_p2p_fields
@@ -307,13 +309,19 @@ def get_output_key(node, output_format):
 
 
 def region_projections(node, fields, weight_field=("gas", "density"),
-                       axes="xyz", particle_projections=True,
-                       output_format="ds", output_dir="."):
+                       axes="xyz", particle_projections=False,
+                       output_format="ds", fixed_size=False, output_dir="."):
+
+    BOX_SIZE = unyt_quantity(300, 'pc')
 
     ds = node.ds
     sphere = node.sphere
-    left  = sphere.center - 1.05 * sphere.radius
-    right = sphere.center + 1.05 * sphere.radius
+    if (fixed_size):
+        left = sphere.center.to('pc') - BOX_SIZE
+        right = sphere.center.to('pc') + BOX_SIZE
+    else :
+        left  = sphere.center - 1.05 * sphere.radius
+        right = sphere.center + 1.05 * sphere.radius
     region = ds.box(left, right)
 
     output_key = get_output_key(node, output_format)
@@ -328,12 +336,21 @@ def region_projections(node, fields, weight_field=("gas", "density"),
 
         if do_fields:
             add_p2p_fields(ds)
-            p = ProjectionPlot(
+            if (fixed_size):
+                p = ProjectionPlot(
+                ds, ax, do_fields, weight_field=weight_field,
+                center=sphere.center, width=BOX_SIZE,
+                data_source=region)
+            else :
+                p = ProjectionPlot(
                 ds, ax, do_fields, weight_field=weight_field,
                 center=sphere.center, width=2*sphere.radius,
                 data_source=region)
-            for field, cmap in fields.items():
-                p.set_cmap(field, cmap)
+            for field, cmap_args in fields.items():
+                p.set_cmap(field, cmap_args[0])
+                p.set_unit(field, cmap_args[1])
+                if (fixed_size):
+                    p.set_zlim(field, *cmap_args[2])
             decorate_plot(node, p)
             p.save(output_dir + "/" + output_key)
             del p
@@ -349,7 +366,13 @@ def region_projections(node, fields, weight_field=("gas", "density"),
                      output_format=output_format, output_dir=output_dir))]
 
     for ax in do_axes:
-        p = ParticleProjectionPlot(
+        if (fixed_size):
+            p = ParticleProjectionPlot(
+            ds, ax, ("all", "particle_mass"),
+            center=sphere.center, width=BOX_SIZE,
+            data_source=region)
+        else :
+            p = ParticleProjectionPlot(
             ds, ax, ("all", "particle_mass"),
             center=sphere.center, width=2*sphere.radius,
             data_source=region)

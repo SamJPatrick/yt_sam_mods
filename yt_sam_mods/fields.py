@@ -12,6 +12,15 @@ def _vrot(field, data):
     np.nan_to_num(v_rot, posinf=0.0, copy=False)
     return v_rot
 
+def _overlap(field, data):
+    bary_grads = list(zip(*[data[('gas', f'density_gradient_{ax}')] for ax in 'xyz']))
+    dm_grads = list(zip(*[data[('gas', f'dark_matter_density_gradient_{ax}')] for ax in 'xyz']))
+    grads_intcp = [np.dot(bary_grad, dm_grad) for bary_grad, dm_grad in zip(bary_grads, dm_grads)]
+    align = [grad / np.abs(grad_bary_mag * grad_dm_mag) for grad, grad_bary_mag, grad_dm_mag in \
+             zip(grads_intcp, data[('gas', 'density_gradient_magnitude')], data[('gas', 'dark_matter_density_gradient_magnitude')])]
+    return align
+
+
 '''
 def _vturb(field, data):
     data._debug()
@@ -253,3 +262,8 @@ def add_p2p_fields(ds):
     add_p2p_field(ds, ('gas', 'HD_H2_ratio'),
                   function=_HD_H2,
                   units='', sampling_type='cell')
+    
+    add_p2p_field(ds, ('gas', 'overlap'),
+                  function=_overlap,
+                  units='', sampling_type='cell')
+    print("Got to the bottom! My work is done...")

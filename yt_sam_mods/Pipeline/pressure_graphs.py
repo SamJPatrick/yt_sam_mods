@@ -1,25 +1,35 @@
 import sys
 import h5py
 import glob
+import os
 from unyt import Msun, pc
 from unyt import unyt_array
 import numpy as np
+
 import matplotlib
 matplotlib.use('AGG')
 import matplotlib.pyplot as plt
 
-from yt.extensions.sam_mods.graph_funcs import get_title, get_dump_num
+from yt.extensions.sam_mods.graph_funcs import *
 
 
+INDIR = "Profiles/Pressure_profiles"
+OUTDIR = "Profiles/Pressure_graphs"
+
+
+try :
+    star_type = sys.argv[1]
+except IndexError:
+    star_type = ""
+    pass
 
 fields = ['hydrostatic', 'thermal', 'ram', 'turbulent']
-filenames = glob.glob("DD*_pressures.h5")
+filenames = glob.glob(os.path.join(INDIR, "DD*_pressures.h5"))
 for name in filenames:
-    title = get_title(name)
+    filename = name.split('/')[-1]
     prof = h5py.File(name, 'r')
-
     plt.figure()
-    plt.title(title)
+    plt.title(get_title(filename, star_type))
     radii = unyt_array(list(prof['radius/array_data']), 'pc')
     for field in fields:
         p_profile = list(prof['/'.join([field, 'array_data'])])
@@ -27,8 +37,9 @@ for name in filenames:
     plt.xlabel("Radius (pc)")
     plt.ylabel("Pressure (Pa)")
     plt.xscale('log')
-    plt.xlim(1e-2, 5e3)
+    plt.xlim(1e-2, 5e2)
     plt.yscale('log')
     plt.ylim(1e-19, 1e-11)
     plt.legend(loc= "upper right")
-    plt.savefig(f"DD{get_dump_num(name)}_pressure_profiles.png")
+    plt.savefig(os.path.join(OUTDIR, f"DD{get_dump_num(filename)}_pressure_profiles.png"))
+    plt.close()

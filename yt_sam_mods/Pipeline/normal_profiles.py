@@ -1,28 +1,25 @@
-import numpy as np
 import os
 import yt
-import h5py
-yt.enable_parallelism()
 import ytree
-
-from yt.frontends.enzo.data_structures import EnzoDataset
-from yt.data_objects.level_sets.api import Clump, find_clumps, add_validator
+yt.enable_parallelism()
+import numpy as np
 
 from ytree.analysis import AnalysisPipeline
 
-from yt.extensions.sam_mods.misc import return_sphere, align_sphere, transpose_unyt, modify_grackle
+from yt.extensions.sam_mods.misc import *
 from yt.extensions.sam_mods.profiles import my_profile
 from yt.extensions.sam_mods.plots import *
-from yt.extensions.sam_mods.tree_analysis_operations import yt_dataset, garbage_collect, delattrs
+from yt.extensions.sam_mods.tree_analysis_operations import yt_dataset, \
+    node_profile, garbage_collect, delattrs
 from yt.extensions.sam_mods import add_p2p_fields
 
-from yt import derived_field
 from unyt import unyt_quantity, unyt_array
 from unyt import G, Msun, kb, mh, pc
 
 
 
 BIN_DENSITY = 20
+OUTDIR = "Profiles/Normal_profiles"
 
 
 
@@ -57,7 +54,13 @@ def mass_weighted_profiles(node, outdir="."):
                        ('gas', 'entropy'),
                        ('gas', 'sound_speed'),
                        ('gas', 'accretion_rate'),
-                       ('gas', 'accretion_rate_z')]
+                       ('gas', 'accretion_rate_z'),
+                       ('gas', 'sound_speed'),
+                       ('gas', 'vortical_time'),
+                       ('gas', 'cooling_time'),
+                       ('gas', 'dynamical_time'),
+                       ('gas', 'velocity_magnitude'),
+                       ('gas', 'total_dynamical_time')]
     fields_raw = [('gas', 'metal3_mass'),
                   ('gas', 'cell_mass'),
                   ('gas', 'matter_mass'),
@@ -94,20 +97,15 @@ if __name__ == "__main__":
     ap.add_operation(return_sphere)
     ap.add_operation(align_sphere)
     
-    ap.add_operation(mass_weighted_profiles, outdir= 'Profiles/Normal_profiles')
+    ap.add_operation(mass_weighted_profiles, outdir= OUTDIR)
     
     ap.add_operation(delattrs, ["sphere", "ds"], always_do=True)
     ap.add_operation(garbage_collect, 60, always_do=True)
 
-    
     tree = a[0]
-
-    '''
-    N_MISSED = 19
-    tree_mod = list(tree['prog'])[N_MISSED:]
-    for node in ytree.parallel_trees(tree_mod):
-        ap.process_target(node)
-    '''
-
-    for node in ytree.parallel_tree_nodes(tree_mod, group="prog"):
+    # N_MISSED = 19
+    # tree_mod = list(tree['prog'])[N_MISSED:]
+    # for node in ytree.parallel_trees(tree_mod):
+    #     ap.process_target(node)
+    for node in ytree.parallel_tree_nodes(tree, group="prog"):
         ap.process_target(node)

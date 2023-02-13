@@ -16,9 +16,8 @@ from matplotlib import pyplot, colors, ticker
 
 import numpy as np
 import yt
-from unyt import unyt_array
+from unyt import unyt_array, unyt_quantity
 from yt.visualization.color_maps import yt_colormaps
-
 
 
 
@@ -284,6 +283,8 @@ def make_phase_plot(
 def decorate_plot(node, p):
     if (p.__class__.__name__ == 'ProfilePlot'):
         p.set_axes_unit("pc")
-    title = f"{str(node.ds)}, z = {node['redshift']:.2f}, t = {node.ds.current_time.in_units('Myr'):.2f}"
+    time = node.ds.current_time.in_units('Myr') - T0
+    #title = f"{str(node.ds)}, z = {node['redshift']:.2f}, t = {time:.2f}"
+    title = f"z = {node['redshift']:.2f}, t = {time:.2f}"
     p.annotate_title(title)
 
