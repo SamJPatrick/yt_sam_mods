@@ -9,7 +9,7 @@ import time
 import yaml
 
 from ytree.data_structures.tree_node import TreeNode
-from unyt import unyt_quantity
+from unyt import unyt_quantity, unyt_array
 
 from yt import load as yt_load
 from yt import ProjectionPlot, ParticleProjectionPlot
@@ -18,6 +18,9 @@ from yt.extensions.sam_mods.plots import decorate_plot
 from yt.extensions.sam_mods.misc import sphere_icom, reunit
 from yt.extensions.sam_mods.profiles import my_profile
 from yt.extensions.sam_mods import add_p2p_fields
+
+
+BOXSIZE_DEFAULT = unyt_quantity(300.0, 'pc')
 
 
 _dataset_dicts = {}
@@ -308,38 +311,35 @@ def get_output_key(node, output_format):
     return output_key
 
 
-def region_projections(node, fields, weight_field=("gas", "density"),
-                       axes="xyz", particle_projections=False,
+def region_projections(node, star_mode, fields, weight_field=("gas", "density"),
+                       axes="xyz", size= BOXSIZE_DEFAULT, particle_projections=False,
                        output_format="ds", fixed_size=False, output_dir="."):
-
-    BOX_SIZE = unyt_quantity(300, 'pc')
 
     ds = node.ds
     sphere = node.sphere
     if (fixed_size):
-        left = sphere.center.to('pc') - BOX_SIZE
-        right = sphere.center.to('pc') + BOX_SIZE
+        left = sphere.center.to('pc') - size
+        right = sphere.center.to('pc') + size
     else :
-        left  = sphere.center - 1.05 * sphere.radius
-        right = sphere.center + 1.05 * sphere.radius
+        left  = sphere.center.to('pc') - 1.05 * sphere.radius
+        right = sphere.center.to('pc') + 1.05 * sphere.radius
+        mylog.info(f"CENTER: {sphere.center.to('code_length')}")
+        mylog.info(f"CENTER: {sphere.center.to('pc')}")
+        mylog.info(f"RADIUS: {sphere.radius.to('pc')}")
     region = ds.box(left, right)
 
     output_key = get_output_key(node, output_format)
 
     for ax in axes:
-        do_fields = \
-            [field for field in fields
-             if not os.path.exists(
-                     get_projection_filename(
-                         node, ax, field=field, weight_field=weight_field,
-                         output_format=output_format, output_dir=output_dir))]
-
+        do_fields = [field for field in fields.keys() if not os.path.exists(
+            get_projection_filename(node, ax, field=field, weight_field=weight_field,
+                                    output_format=output_format, output_dir=output_dir))]
         if do_fields:
-            add_p2p_fields(ds)
+            #add_p2p_fields(ds)
             if (fixed_size):
                 p = ProjectionPlot(
                 ds, ax, do_fields, weight_field=weight_field,
-                center=sphere.center, width=BOX_SIZE,
+                center=sphere.center, width=size,
                 data_source=region)
             else :
                 p = ProjectionPlot(
@@ -349,27 +349,23 @@ def region_projections(node, fields, weight_field=("gas", "density"),
             for field, cmap_args in fields.items():
                 p.set_cmap(field, cmap_args[0])
                 p.set_unit(field, cmap_args[1])
-                if (fixed_size):
-                    p.set_zlim(field, *cmap_args[2])
-            decorate_plot(node, p)
+                p.set_axes_unit('pc')
+                p.set_zlim(field, *cmap_args[2])
+            decorate_plot(node, p, star_mode)
             p.save(output_dir + "/" + output_key)
             del p
 
     if not particle_projections:
         return
 
-    do_axes = \
-        [ax for ax in axes
-         if not os.path.exists(
-                 get_projection_filename(
-                     node, ax, particle_projections=True,
-                     output_format=output_format, output_dir=output_dir))]
-
+    do_axes = [ax for ax in axes if not os.path.exists(
+        get_projection_filename(node, ax, particle_projections=True,
+                                output_format=output_format, output_dir=output_dir))]
     for ax in do_axes:
         if (fixed_size):
             p = ParticleProjectionPlot(
             ds, ax, ("all", "particle_mass"),
-            center=sphere.center, width=BOX_SIZE,
+            center=sphere.center, width=size,
             data_source=region)
         else :
             p = ParticleProjectionPlot(
@@ -378,13 +374,14 @@ def region_projections(node, fields, weight_field=("gas", "density"),
             data_source=region)
         p.set_unit(("all", "particle_mass"), "Msun")
         p.set_cmap(("all", "particle_mass"), "turbo")
-        decorate_plot(node, p)
+        p.set_axes_unit('pc')
+        decorate_plot(node, p, star_mode)
         p.save(output_dir + "/" + output_key)
         del p
 
-    sphere.clear_data()
-    region.clear_data()
-    del sphere, region, ds
+    #sphere.clear_data()
+    #region.clear_data()
+    #del sphere, region, ds
 
 
 def sphere_radial_profiles(node, fields, weight_field=None, profile_kwargs=None,

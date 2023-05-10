@@ -23,12 +23,16 @@ except IndexError:
 
 df_sim = yt.load(SIMULATION_FILE)
 df_radius = yt.load(RADIUS_FILE)
+idx_max = np.argmax(df_radius.data[('data', 'bonnor_ebert_ratio')][-1])
+#idx_cross = np.argwhere(df_radius.data[('data', 'bonnor_ebert_ratio')][-1] > 1)[0].item()
 for index, time in enumerate(df_radius.data[('data', 'time')].to('Myr')):
     
     index_sim = np.argwhere(df_sim.data[('data', 'time')].to('Myr') == time).item()
     dsfn = df_sim.data[('data', 'filename')].astype(str)[index_sim].split('/')[-1]
     radius = df_radius.data[('data', 'radius')][1:].to('pc')
     be_ratio = df_radius.data[('data', 'bonnor_ebert_ratio')][index].to('')
+    radius_be = radius[idx_max].to('pc')
+    #radius_be_cross = radius[idx_cross].to('pc')
 
     plt.figure()
     plt.title(get_title(dsfn, star_type))
@@ -40,5 +44,7 @@ for index, time in enumerate(df_radius.data[('data', 'time')].to('Myr')):
     plt.ylabel(r"$M_{tot} / M_{BE}$")
     plt.yscale('log')
     plt.ylim(1e-4, 1e1)
+    plt.axvline(x= radius_be, color='blue')
+    #plt.axvline(x= radius_be_cross, color='orange')
     plt.savefig(os.path.join(OUTDIR, f"DD{get_dump_num(dsfn)}_be_ratio_radius.png"))
     plt.close()

@@ -14,9 +14,9 @@ from unyt import Myr, yr, pc
 
 
 
-MASS_FILE = "star_None_mass.h5"
+RADIUS_FILE = "star_None_radius.h5"
 SIMULATION_FILE = "simulation.h5"
-OUTDIR = "Profiles/Norms_at_peak"
+OUTDIR = "Profiles/Norms_at_peak_radius"
 FIELDS = ['density', 'temperature', 'velocity_magnitude', 'sound_speed',
           'accretion_rate', 'accretion_rate_z', 'metallicity3', 'bonnor_ebert_ratio']
 
@@ -28,13 +28,13 @@ except IndexError:
     pass
 time_offset = get_time_offset(star_type)
 
-df_mass = yt.load(MASS_FILE)
-index = np.argmax(df_mass.data[('data', 'bonnor_ebert_ratio')][-1])
-times = df_mass.data[('data', 'time')].to('Myr')
+df_radius = yt.load(RADIUS_FILE)
+index = np.argmax(df_radius.data[('data', 'bonnor_ebert_ratio')][-1])
+times = df_radius.data[('data', 'time')].to('Myr')
 norms_dict = {field: unyt_array([0.0 for i in range (len(times))], get_field_dict(field)['units']) for field in FIELDS}
 for field in FIELDS:
     for i, time in enumerate(times):
-        norms_dict[field][i] = np.abs(df_mass.data[('data', field)][i][index])
+        norms_dict[field][i] = np.abs(df_radius.data[('data', field)][i][index])
 first_index = np.argwhere(times >= time_offset)[0].item()
 
 for field, arr in norms_dict.items():

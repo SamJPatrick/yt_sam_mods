@@ -34,7 +34,7 @@ index = np.argmax(df_mass.data[('data', 'bonnor_ebert_ratio')][-1])
 times = df_mass.data[('data', 'time')].to('Myr')
 timescale_dict = {field: unyt_array([0.0 for i in range (len(times))], 'Myr') for field in fields}
 for field in fields:
-    for i, time in enumerate(times):
+    for i in range (len(times)):
         timescale_dict[field][i] = df_mass.data[('data', field)][i][index].to('Myr')
 
 plt.figure()
@@ -48,5 +48,5 @@ plt.xlim(0.0, 130.0)
 plt.yscale('log')
 plt.ylim(1e0, 1e6)
 plt.legend(loc='upper right')
-plt.savefig("timescales_at_peak.png")
+plt.savefig("timescales_at_peak_mass.png")
 plt.close()

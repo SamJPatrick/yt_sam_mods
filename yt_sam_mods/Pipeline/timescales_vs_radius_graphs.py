@@ -34,6 +34,7 @@ assert len(fields) == len(labels) == len(colors), "Error, field length do not ma
 df_sim = yt.load(SIMULATION_FILE)
 df_radius = yt.load(RADIUS_FILE)
 idx_max = np.argmax(df_radius.data[('data', 'bonnor_ebert_ratio')][-1])
+#idx_cross = np.argwhere(df_radius.data[('data', 'bonnor_ebert_ratio')][-1] > 1)[0].item()
 for index, time in enumerate(df_radius.data[('data', 'time')].to('Myr')):
     
     my_fig = GridFigure(1, 1, figsize=(6, 4.5),
@@ -48,6 +49,7 @@ for index, time in enumerate(df_radius.data[('data', 'time')].to('Myr')):
  
     radius = df_radius.data[('data', 'radius')][1:].to('pc')
     radius_be = radius[idx_max].to('pc')
+    #radius_be_cross = radius[idx_cross].to('pc')
     profile_dict = {}
     for field, label, color in zip(fields, labels, colors):        
         profile_dict[field] = df_radius.data[('data', field)][index].to('Myr')
@@ -73,9 +75,10 @@ for index, time in enumerate(df_radius.data[('data', 'time')].to('Myr')):
             pyplot.axvspan(radius[i], radius[i+1], facecolor= bkgcolor[3], alpha=0.5)
             
     my_axes.yaxis.set_label_text("t [Myr]")
-    my_axes.axvline(x= radius_be, linewidth=2)
-    my_axes.legend(loc='lower right')
-    my_axes.annotate(f"time={(time - time_offset):.2f}", xy= (2e-2, 1e4), \
+    my_axes.axvline(x= radius_be, color='blue')
+    #my_axes.axvline(x= radius_be_cross, color='orange')
+    my_axes.legend(loc='upper left')
+    my_axes.annotate(f"time={(time - time_offset):.2f}", xy= (2e-2, 1e1), \
                      backgroundcolor= 'white', fontsize= 'medium')
 
     index_sim = np.argwhere(df_sim.data[('data', 'time')].to('Myr') == time).item()

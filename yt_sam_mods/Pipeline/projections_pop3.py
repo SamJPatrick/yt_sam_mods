@@ -7,7 +7,7 @@ import ytree
 
 from ytree.analysis import AnalysisPipeline
 
-from yt.extensions.sam_mods.misc import return_sphere, align_sphere, modify_grackle
+from yt.extensions.sam_mods.misc import return_sphere_pop3, align_sphere, modify_grackle
 from yt.extensions.sam_mods.profiles import my_profile
 from yt.extensions.sam_mods.plots import *
 from yt.extensions.sam_mods.tree_analysis_operations import *
@@ -24,7 +24,6 @@ BIN_DENSITY = 20
 BOXSIZE = unyt_quantity(300, 'pc')
 
 FIELDS = ['density', 'H2_p0_fraction', 'metallicity3', 'temperature']
-
 
 
 if __name__ == "__main__":
@@ -48,13 +47,13 @@ if __name__ == "__main__":
     ap.add_operation(yt_dataset, data_dir, add_fields= True)
     #ap.add_operation(yt_dataset, data_dir, es)
     #ap.add_operation(modify_grackle)
-    ap.add_operation(return_sphere)
-    ap.add_operation(align_sphere)
+    ap.add_operation(return_sphere_pop3, 'pisn')
 
     field_info = dict([(('gas', field), (get_field_dict(field)['colormap'], \
                                          get_field_dict(field)['units'], \
                                          get_field_dict(field)['limits'])) for field in FIELDS])
-    ap.add_operation(region_projections, 'pisn', field_info, output_dir='Projections')
+    #ap.add_operation(region_projections, 'pisn', fields, size= BOXSIZE, fixed_size=True, output_dir='Projections_pop3')
+    ap.add_operation(region_projections, 'pisn', field_info, output_dir='Projections_pop3')
     
     ap.add_operation(delattrs, ["sphere", "ds"], always_do=True)
     ap.add_operation(garbage_collect, 60, always_do=True)

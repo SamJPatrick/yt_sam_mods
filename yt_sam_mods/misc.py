@@ -1,13 +1,21 @@
 import yt
 import pygrackle
 import os
+import h5py
 import numpy as np
-import statistics
 from unyt import unyt_array, unyt_quantity
 from unyt import pc, Myr
 from yt.extensions.astro_analysis.halo_analysis.halo_catalog.halo_callbacks import periodic_distance
 from yt.utilities.exceptions import YTSphereTooSmall
+from yt.extensions.sam_mods.graph_funcs import get_sn_energy, get_time_offset
 
+
+
+SAFETY_FACTOR = 1.2
+POP3_POSITION = [0.53784, 0.53817, 0.52178] # put these values into graph_funcs.py later!!!!
+RHO_BKGRD = unyt_quantity(1e-25, 'g/cm**3')
+BOXSIZE_DEFAULT = unyt_quantity(300.0, 'pc')
+BOXSIZE_MIN = unyt_quantity(100.0, 'pc')
 
 
 
@@ -81,8 +89,40 @@ def return_sphere(node):
         sphere = ds.sphere(center, radius)
         center = sphere_icom(sphere, 4*sphere["gas", "dx"].min(), \
                              com_kwargs=dict(use_particles=False, use_gas=True))
+    #yt.mylog.info(f"TARGET HALO CENTER: {center}")
     sphere = ds.sphere(center, radius)
     node.sphere = sphere
+
+
+def return_sphere_pop3(node, star_mode):
+    ds = node.ds
+    center = ds.arr(POP3_POSITION, 'code_length')
+    radius_min = BOXSIZE_MIN * (1.0/1.05)
+    if (ds.current_time < get_time_offset(star_mode)):
+        #radius = reunit(ds, node["virial_radius"], "unitary")
+        radius = radius_min
+    else :
+        st_radius = SAFETY_FACTOR * (get_sn_energy(star_mode) / RHO_BKGRD)**(1/5) *\
+            (ds.current_time.to('Myr') - get_time_offset(star_mode))**(2/5)
+        if (st_radius < BOXSIZE_MIN):
+            radius = radius_min
+        else :
+            radius = st_radius
+    sphere = ds.sphere(center, radius)
+    node.sphere = sphere
+
+
+def retrieve_positions(node, position_file):
+    df = h5py.File(position_file, 'r')
+    ds = node.ds
+    dumps = [dump.astype(str).split('/')[0] for dump in list(df['dumps'])]
+    index = np.argwhere(np.array(dumps) == str(ds)).item()
+    star_position = ds.arr(df['star_positions'][index], 'code_length').to('pc')
+    halo_position = ds.arr(df['halo_positions'][index], 'code_length').to('pc')
+    distance = unyt_quantity(np.linalg.norm(star_position - halo_position), 'pc')
+    node.star_position = star_position
+    node.halo_position = halo_position
+    node.distance = distance
 
 
 def align_sphere(node):
@@ -104,13 +144,6 @@ def reunit(ds, val, units):
     else:
         func = ds.arr
     return func(val.to(units).d, units)
-
-
-def transpose_unyt(quant_arr):
-    values, units = zip(*[(quantity.value.item(), quantity.units) for quantity in quant_arr])
-    unit = statistics.mode(units)
-    arr = unyt_array([quantity.in_units(unit).value.item() for quantity in quant_arr], unit)
-    return arr
 
 
 def uperiodic_distance(x1, x2, domain=None):

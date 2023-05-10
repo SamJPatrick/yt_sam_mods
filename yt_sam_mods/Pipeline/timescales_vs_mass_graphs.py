@@ -34,6 +34,7 @@ assert len(fields) == len(labels) == len(colors), "Error, field length do not ma
 df_sim = yt.load(SIMULATION_FILE)
 df_mass = yt.load(MASS_FILE)
 idx_max = np.argmax(df_mass.data[('data', 'bonnor_ebert_ratio')][-1])
+#idx_cross = np.argwhere(df_mass.data[('data', 'bonnor_ebert_ratio')][-1] > 1)[0].item()
 for index, time in enumerate(df_mass.data[('data', 'time')].to('Myr')):
     
     my_fig = GridFigure(1, 1, figsize=(6, 4.5),
@@ -46,8 +47,9 @@ for index, time in enumerate(df_mass.data[('data', 'time')].to('Myr')):
     xlim = (1e-2, 1e5)
     tx = twin_unit_axes(my_axes, xlim, "mass", "Msun", top_units="kg")
 
-    mass = df_mass.data[('data', 'gas_mass_enclosed')][index].to('Msun')
+    mass = df_mass.data[('data', 'gas_mass_enclosed')][-1].to('Msun')
     mass_be = mass[idx_max].to('Msun')
+    #mass_be_cross = mass[idx_cross].to('Msun')
     profile_dict = {}
     for field, label, color in zip(fields, labels, colors):        
         profile_dict[field] = df_mass.data[('data', field)][index].to('Myr')
@@ -72,9 +74,10 @@ for index, time in enumerate(df_mass.data[('data', 'time')].to('Myr')):
         else :
             pyplot.axvspan(mass[i], mass[i+1], facecolor= bkgcolor[3], alpha=0.5)            
     my_axes.yaxis.set_label_text("t [Myr]")
-    my_axes.axvline(x= mass_be, linewidth=2)
-    my_axes.legend(loc= 'lower right')
-    my_axes.annotate(f"time={(time - time_offset):.2f}", xy= (1e-1, 1e4), \
+    my_axes.axvline(x= mass_be, color='blue')
+    #my_axes.axvline(x= mass_be_cross, color='orange')
+    my_axes.legend(loc= 'upper left')
+    my_axes.annotate(f"time={(time - time_offset):.2f}", xy= (1e-1, 1e1), \
                      backgroundcolor= 'white', fontsize= 'medium')
 
     index_sim = np.argwhere(df_sim.data[('data', 'time')].to('Myr') == time).item()

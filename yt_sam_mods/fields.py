@@ -266,4 +266,4 @@ def add_p2p_fields(ds):
     add_p2p_field(ds, ('gas', 'overlap'),
                   function=_overlap,
                   units='', sampling_type='cell')
-    print("Got to the bottom! My work is done...")
+    #print("Got to the bottom! My work is done...")

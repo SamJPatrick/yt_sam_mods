@@ -1,6 +1,7 @@
 import os
 import yt
 import sys
+import glob
 import numpy as np
 from  yt.extensions.sam_mods.graph_funcs import *
 
@@ -15,8 +16,9 @@ from unyt import Myr, yr, pc
 
 
 RADIUS_FILE = "star_None_radius.h5"
+PROFILE_PATH = "Profiles/Normal_profiles"
 SIMULATION_FILE = "simulation.h5"
-OUTDIR = "Profiles/Normal_graphs"
+OUTDIR = "Profiles/Test_graphs"
 FIELDS = ['density', 'temperature', 'velocity_magnitude', 'sound_speed']
 
 
@@ -28,22 +30,16 @@ except IndexError:
 time_offset = get_time_offset(star_type)
 
 
-df_sim = yt.load(SIMULATION_FILE)
-df_radius = yt.load(RADIUS_FILE)
-
-
-times = df_radius.data[('data', 'time')].to('Myr')
-radii = df_radius.data[('data', 'radius')][1:].to('pc')
-index_be = np.argmax(df_radius.data[('data', 'bonnor_ebert_ratio')][-1])
-radius_be = radii[index_be]
-for field in FIELDS:
-    field_dict = get_field_dict(field)
-    for i, time in enumerate(times):
-        index_sim = np.argwhere(df_sim.data[('data', 'time')].to('Myr') == time).item()
-        dsfn = df_sim.data[('data', 'filename')].astype(str)[index_sim].split('/')[-1]
+files = sorted(glob.glob(os.path.join(PROFILE_PATH, "DD*_profile_weight_field_cell_mass.h5")))
+for df_path in files:
+    for field in FIELDS:
+        field_dict = get_field_dict(field)
+        df = yt.load(df_path)
+        df_name = os.path.basename(df_path)
+        time = get_time_z(df_name, star_type)[0]
         plt.figure()
-        plt.title(get_title(dsfn, star_type))
-        plt.plot(radii, df_radius.data[('data', field)][i])
+        plt.title(get_title(df_name, star_type))
+        plt.plot(df.data[('data', 'radius')], df.data[('data', f'{field}')])
         label = ' '.join(np.char.capitalize(field.split('_')))
         plt.ylabel(f"{label} ({field_dict['units']})")
         plt.xlabel("Radius (pc)")
@@ -51,7 +47,6 @@ for field in FIELDS:
         plt.xscale('log')
         if (field_dict['log'] == True):
             plt.yscale('log')
-        plt.ylim(field_dict['limits'])
-        plt.axvline(x= radius_be)
-        plt.savefig(os.path.join(OUTDIR, f"DD{get_dump_num(dsfn)}_{field}.png"))
+            plt.ylim(field_dict['limits'])
+        plt.savefig(os.path.join(OUTDIR, f"DD{get_dump_num(df_name)}_{field}.png"))
         plt.close()
