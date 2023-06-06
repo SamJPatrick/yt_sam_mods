@@ -25,9 +25,8 @@ COMPACT_FACTOR = 10.0
 NUM_RAYS = 10
 RAY_COLOR = 'orange'
 BOXSIZE = unyt_quantity(1000.0, 'pc')
-FIELDS = [('gas', 'density'), ('gas', 'temperature'), ('gas', 'H2_p0_fraction'), \
-          ('gas', 'pressure'), ('gas', 'metallicity3'), ('gas', 'entropy')]
-VEC_FIELDS = [('gas', 'velocity')]
+FIELDS = ['density', 'temperature', 'H2_p0_fraction', 'pressure', 'metallicity3', 'entropy']
+VEC_FIELDS = ['velocity']
 
 
 def ray_trace(node, outdir= '.', num_rays= 20):
@@ -44,10 +43,10 @@ def ray_trace(node, outdir= '.', num_rays= 20):
     diff_max = np.arctan(sphere.radius / (d_halo * COMPACT_FACTOR))
     x, y, z = halo_center - star_coords
 
-    field_dict = {field[1]: [[] for n in range (num_rays)] for field in FIELDS}
-    vec_field_dict = {field[1]: [[] for n in range (num_rays)] for field in VEC_FIELDS}
+    field_dict = {field: [[] for n in range (num_rays)] for field in FIELDS}
+    vec_field_dict = {field: [[] for n in range (num_rays)] for field in VEC_FIELDS}
     distances = [[] for n in range (num_rays)]
-    psi = [0 for n in range (num_rays)]
+    psi = unyt_array(np.zeros(num_rays), 'dimensionless')
     plots = [yt.ProjectionPlot(ds, ax, ('gas', 'density'), center= halo_center, width= BOXSIZE) for ax in 'xyz']
     
     for n in range(num_rays):
@@ -60,11 +59,12 @@ def ray_trace(node, outdir= '.', num_rays= 20):
             scatter_phi = np.random.uniform(low= -diff_max/2, high=diff_max/2)
         theta = np.arctan2(np.sqrt(x**2 + y**2), z) + scatter_theta
         phi = np.arctan2(y, x) + scatter_phi
+        yt.mylog.info(f"Angles: {theta} & {phi}")
         x_ = vec_length * np.sin(theta) * np.cos(phi)
         y_ = vec_length * np.sin(theta) * np.sin(phi)
         z_ = vec_length * np.cos(theta)
         vec_end = star_coords + transpose_unyt([x_, y_, z_])
-        psi[n] = np.arctan2(np.sqrt(np.tan(phi)**2 + np.tan(theta)**2))
+        psi[n] = np.arctan(np.sqrt(np.tan(phi)**2 + np.tan(theta)**2))
         
         for plt in plots:
             plt.annotate_line(star_coords, vec_end, coord_system='data', plot_args={'color': RAY_COLOR, 'linewidth': 1})
@@ -75,7 +75,7 @@ def ray_trace(node, outdir= '.', num_rays= 20):
             ray = ds.r[star_coords:vec_end]
 
         for field in field_dict.keys():
-            field_dict[field][n] = ray[field][np.argsort(ray['t'])]
+            field_dict[field][n] = ray[field][np.argsort(ray['t'])].to(get_field_dict(field)['units'])
             yt.mylog.info(f"Calculated ray {n} for {field}")
         for field in vec_field_dict.keys():
             vec_field_dict[field][n] = transpose_unyt([transpose_unyt([ray[f'{field}_{ax}'][np.argsort(ray['t'])][i] \
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     ap.add_operation(garbage_collect, 60, always_do=True)
 
     tree = a[0]
-    #N_COMPLETED = 66
+    #N_COMPLETED = 11
     #tree_mod = list(tree['prog'])[N_COMPLETED:]
     #for node in ytree.parallel_trees(tree_mod):
     #    ap.process_target(node)

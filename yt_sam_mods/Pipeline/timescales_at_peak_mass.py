@@ -38,7 +38,7 @@ for field in fields:
         timescale_dict[field][i] = df_mass.data[('data', field)][i][index].to('Myr')
 
 plt.figure()
-plt.title("Timescales at BE peak vs time")
+plt.title(star_mode.upper())
 for field, color, label in zip(fields, colors, labels):
     plt.plot(times - time_offset, timescale_dict[field], color=color, alpha=0.7, linewidth=1.5, label=label)
 plt.ylabel("Timescales (Myr)")
