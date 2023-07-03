@@ -1,5 +1,6 @@
 import os
 import sys
+import csv
 import glob
 import h5py
 import numpy as np
@@ -19,11 +20,12 @@ from unyt import Myr, yr, pc, kb, mh
 GAMMA = 5/3
 MU = 1.6
 
-#INDIR = "Sobolev/Ray_profiles"
-INDIR = "Sobolev/Ray_profiles/Packed_rays"
+INDIR = "Sobolev/Ray_profiles"
 OUTDIR = "Sobolev/Ray_graphs"
+DISTANCE_FILE = "ray_distances.txt"
 NUM_RAYS = 10
-FIELDS = ['density', 'temperature', 'pressure', 'entropy', 'metallicity3', 'H2_p0_fraction', 'velocity']
+FIELDS = ['density', 'dark_matter_density', 'H2_p0_fraction', 'El_fraction', 'cooling_time', \
+          'temperature', 'pressure', 'metallicity3', 'entropy', 'velocity_norm', 'velocity_para']
 CUSTOM_LIMS = (1e-29, 1e-21)
 
 
@@ -33,36 +35,55 @@ except IndexError:
     star_type = ""
     pass
 
-#datasets = glob.glob(os.path.join(INDIR, "DD*_sobolev.h5"))
+
+with open(DISTANCE_FILE, newline='\n') as myfile:
+    reader = list(csv.reader(myfile, delimiter= '\t'))
+dumps, distances = zip(*[entry for entry in reader])
+distances = unyt_array([float(distance) for distance in distances], 'pc')
+
+RHO_BKGRD = unyt_quantity(1e-25, 'g/cm**3')
+E_FACTOR = (get_sn_energy(star_type) / RHO_BKGRD)**(1/5)
+
 datasets = glob.glob(os.path.join(INDIR, "DD*_packed.h5"))
 datasets = sorted(datasets)
-#datasets.sort(key = lambda x: get_time_z(os.path.basename(x), star_type)[0])
-
-'''
-for dataset in datasets:
+for i, dataset in enumerate(datasets):
     dump_name = os.path.basename(dataset)
     ds = h5py.File(dataset, 'r')
+    if (get_time_z(dump_name, star_type)[0] > get_lifetime_offset(star_type)):
+        grad_field = "temperature"
+    else :
+        grad_field = "El_fraction"
+    means = transpose_unyt([np.mean(transpose_unyt(x)) for x in \
+                            zip(*[unyt_array(ds[f'{grad_field}_{n}/array_data'], 'g/cm**3') for n in range (NUM_RAYS)])])
+    grads = [((means[i+1] - means[i]) / means[i]) for i in range (len(means) - 1)]
+    index_max = np.argmin(transpose_unyt(grads)) + 1
+    dist_theo = (E_FACTOR * (get_time_z(dump_name, star_type)[0] - get_lifetime_offset(star_type))**(2/5)).to('pc')
     for field in FIELDS:    
         field_dict = get_field_dict(field)
         plt.figure()
         plt.title(get_title(dump_name, star_type))
         for n in range (NUM_RAYS):
-            #plt.plot(ds[f"distances_{n}/array_data"], ds[f"{field}_{n}/array_data"])
-            plt.plot(ds["distances"][:], ds[f"{field}_{n}"][:])
+            plt.plot(ds[f"distances/array_data"], ds[f"{field}_{n}/array_data"])
         label = ' '.join(np.char.capitalize(field.split('_')))
         plt.ylabel(f"{label} ({field_dict['units']})")
         plt.xlabel("Radius (pc)")
         plt.xlim(0.0, 400.0)
         if (field_dict['log'] == True):
             plt.yscale('log')
-        if (field == 'temperature'):
+        if ('velocity' in field):
             plt.axhline(y= 0.0)
+        if (get_time_z(dump_name, star_type)[0] > get_lifetime_offset(star_type)):
+            plt.axvline(x= dist_theo, color='red', linestyle='--')
+            plt.axvline(x= ds[f"distances/array_data"][index_max], color='red')
+        else :
+            plt.axvline(x= ds[f"distances/array_data"][index_max], color='green')
+        plt.axvline(x= distances[i], color='blue')
         plt.ylim(field_dict['limits'])
         plt.savefig(os.path.join(OUTDIR, f"DD{get_dump_num(dump_name)}_{field}.png"))
         plt.close()
-'''
 
-        
+
+'''    
 for dataset in datasets:
     df = h5py.File(dataset, 'r')
     dump_name = os.path.basename(dataset)
@@ -92,13 +113,14 @@ for dataset in datasets:
     plt.plot(distances[1:], accl_temp, label= 'temperature')
     plt.ylabel("$\dot{v} (m s^{-2})$")
     plt.yscale('log')
+    plt.ylim(1e-15, 1e3)
     plt.xlabel("Radius (pc)")
     plt.xlim(0.0, 400.0)
     plt.legend(loc= 'upper right')
     plt.savefig(os.path.join(OUTDIR, f"DD{get_dump_num(dump_name)}_accelerations.png"))
     plt.close()
 
-    '''
+    
     plt.figure()
     plt.title(get_title(dump_name, star_type))
     energy_vel = (densities * velocities**2).to('erg*m**(-3)')

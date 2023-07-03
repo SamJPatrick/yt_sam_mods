@@ -2,7 +2,7 @@
 
 import numpy as np
 from yt.utilities.exceptions import YTFieldNotFound
-from unyt import kb, G, Msun, pc
+from unyt import kb, G, Msun, pc, mh
 from unyt import unyt_quantity, unyt_array
 
 
@@ -19,6 +19,10 @@ def _overlap(field, data):
     align = [grad / np.abs(grad_bary_mag * grad_dm_mag) for grad, grad_bary_mag, grad_dm_mag in \
              zip(grads_intcp, data[('gas', 'density_gradient_magnitude')], data[('gas', 'dark_matter_density_gradient_magnitude')])]
     return align
+
+#def _relative_radial_velocity(field, data):
+#    x = data.get_field_parameter("reference_point")
+#    locs = zip(*[data[('gas', '')]])
 
 
 '''
@@ -146,6 +150,10 @@ def _vortical_time(field, data):
 def _vortical_cooling_ratio(field, data):
     return data[('gas', 'vortical_time')] / data[('gas', 'cooling_time')]
 
+def _cooling_intensity(field, data):
+    n_density = data[('gas', 'density')] / (data[('gas', 'mean_molecular_weight')] * mh)
+    return data[('gas', 'temperature')] * n_density**2
+
 
 
 def _dark_matter_mass(field, data):
@@ -254,6 +262,10 @@ def add_p2p_fields(ds):
     add_p2p_field(ds, ('gas', 'vortical_cooling_ratio'),
                   function=_vortical_cooling_ratio,
                   units='', sampling_type='cell')
+    add_p2p_field(ds, ('gas', 'cooling_intensity'),
+                  function=_cooling_intensity,
+                  units='K/cm**6', sampling_type='cell')
+
 
     
     add_p2p_field(ds, ('gas', 'dark_matter_mass'),

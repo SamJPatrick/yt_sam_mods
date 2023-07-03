@@ -23,6 +23,18 @@ def generate_vol_laplacian(ds, quantity):
     return _vol_laplacian
 
 
+def generate_field_overlap(ds, field_1, field_2):
+    grads_1 = np.array(ds.add_gradient_fields(field_1))
+    grads_2 = np.array(ds.add_gradient_fields(field_2))
+    print(grads_1)
+    print(grads_2)
+    grad_prod = np.dot(grads_1[:-1], grads_2[:-1].reshape(2,3)) / (grads_1[3] * grads_2[3])
+    def _field_overlap(field, data):
+        overlap = data[grad_prod] * data[('gas', 'cell_volume')]
+        return overlap
+    return _field_overlap
+
+
 def generate_divergence(ds, quantity):
     for ax in 'xyz':
         ds.add_field((f'{quantity[0]}', f'{quantity[1]}_vel_{ax}'), \

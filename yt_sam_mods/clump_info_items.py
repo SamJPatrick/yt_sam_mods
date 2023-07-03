@@ -2,6 +2,7 @@ import numpy as np
 from yt.data_objects.level_sets.api import add_clump_info
 from unyt import G, kb, mh, pc
 from unyt import unyt_quantity, unyt_array
+from yt.extensions.sam_mods.field_utils import *
 
 
 
@@ -9,35 +10,6 @@ from unyt import unyt_quantity, unyt_array
 Z_CRIT = 5e-3
 SMOL_SP_INIT_FACT = 1.10 * np.sqrt(3.0)
 SMOL_SP_INC_FACT = 1.5
-
-
-
-
-def multiply_fields(ds, *quantities):
-    def _field_product(field, data):
-        return np.prod([data[quantity] for quantity in quantities])
-    return _field_product
-
-def generate_vol_laplacian(ds, quantity):
-    hassian = []
-    grad_fields = ds.add_gradient_fields(quantity)
-    for grad_field in grad_fields[:-1]:
-        hassian.append(ds.add_gradient_fields(grad_field)[:-1])
-    def _vol_laplacian(field, data):
-        div2 = sum([data[hassian[i][i]] * data[('gas', 'cell_volume')] for i in range (0, 3)])
-        return div2
-    return _vol_laplacian
-
-def generate_divergence(ds, quantity):
-    for ax in 'xyz':
-        ds.add_field((f'{quantity[0]}', f'{quantity[1]}_vel_{ax}'), \
-                      function= multiply_fields(ds, ('gas', f'velocity_{ax}'), quantity), \
-                      sampling_type= 'local', units='', take_log=False)
-    divs = [ds.add_gradient_fields((f'{quantity[0]}', f'{quantity[1]}_vel_{ax}'))[i] \
-            for i, ax in enumerate('xyz')]
-    def _divergence(field, data):
-        return sum([data[div_comp] for div_comp in divs])
-    return _divergence
 
 
 

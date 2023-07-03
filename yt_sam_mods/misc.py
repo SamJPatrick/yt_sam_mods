@@ -14,8 +14,8 @@ from yt.extensions.sam_mods.graph_funcs import get_sn_energy, get_time_offset
 SAFETY_FACTOR = 1.2
 POP3_POSITION = [0.53784, 0.53817, 0.52178] # put these values into graph_funcs.py later!!!!
 RHO_BKGRD = unyt_quantity(1e-25, 'g/cm**3')
-BOXSIZE_DEFAULT = unyt_quantity(300.0, 'pc')
-BOXSIZE_MIN = unyt_quantity(100.0, 'pc')
+BOXSIZE_DEFAULT = unyt_quantity(600.0, 'pc')
+BOXSIZE_MIN = unyt_quantity(250.0, 'pc')
 
 
 
@@ -94,20 +94,24 @@ def return_sphere(node):
     node.sphere = sphere
 
 
-def return_sphere_pop3(node, star_mode):
+def return_sphere_pop3(node, fixed_size, star_mode):
     ds = node.ds
     center = ds.arr(POP3_POSITION, 'code_length')
-    radius_min = BOXSIZE_MIN * (1.0/1.05)
-    if (ds.current_time < get_time_offset(star_mode)):
-        #radius = reunit(ds, node["virial_radius"], "unitary")
-        radius = radius_min
+
+    if (fixed_size):
+        radius = BOXSIZE_DEFAULT
     else :
-        st_radius = SAFETY_FACTOR * (get_sn_energy(star_mode) / RHO_BKGRD)**(1/5) *\
-            (ds.current_time.to('Myr') - get_time_offset(star_mode))**(2/5)
-        if (st_radius < BOXSIZE_MIN):
+        radius_min = BOXSIZE_MIN
+        if (ds.current_time < get_time_offset(star_mode)):
+            #radius = reunit(ds, node["virial_radius"], "unitary")
             radius = radius_min
         else :
-            radius = st_radius
+            st_radius = SAFETY_FACTOR * (get_sn_energy(star_mode) / RHO_BKGRD)**(1/5) *\
+                (ds.current_time.to('Myr') - get_time_offset(star_mode))**(2/5)
+            if (st_radius < BOXSIZE_MIN):
+                radius = radius_min
+            else :
+                radius = st_radius
     sphere = ds.sphere(center, radius)
     node.sphere = sphere
 
