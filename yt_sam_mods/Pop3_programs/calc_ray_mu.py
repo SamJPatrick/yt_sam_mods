@@ -22,7 +22,6 @@ NUM_RAYS = 10
 WIN = 1
 
 INDIR_RAYS = "Sobolev/Ray_profiles"
-INDIR_PROFS = "Profiles_pop3/Normal_profiles"
 DISTANCE_FILE = "ray_distances.txt"
 OUTDIR_MU = "Sobolev/Viscous_params/Mu"
 OUTDIR_NU = "Sobolev/Viscous_params/Nu"
@@ -30,6 +29,8 @@ OUTDIR_PHI = "Sobolev/Viscous_params/Phi"
 
 MU = 1.6
 CONV_CONST = kb / (MU * mh)
+
+TIME_OFFSET = unyt_quantity(0.15, 'Myr')
 
 
 try :
@@ -44,32 +45,25 @@ with open(DISTANCE_FILE, newline='\n') as myfile:
 dumps, distances = zip(*[entry for entry in reader])
 halo_distances = unyt_array([float(distance) for distance in distances], 'pc')
 
-prof_files = sorted(glob.glob(os.path.join(INDIR_PROFS, "DD*_profile_weight_field_cell_mass.h5")))
 ray_files = sorted(glob.glob(os.path.join(INDIR_RAYS, "DD*_packed.h5")))
-assert len(prof_files) == len(ray_files), "Error, unequal number of datasets found"
 for i, ray_file in enumerate(ray_files):
     
     df = h5py.File(ray_file, 'r')
     dump_name = os.path.basename(ray_file)
     distances = unyt_array(df['distances/array_data'], 'pc')
     arr_len = len(distances)
-    
-    if (get_time_z(dump_name, star_type)[0] > get_lifetime_offset(star_type)):
-        grad_field = "temperature"
-        line_color = "red"
-        df_prof = yt.load(prof_files[i])
-        used = df_prof.profile.used
-        radii = df_prof.profile.x[used].to('pc')
-        temps = df_prof.data[('data', 'temperature')][used].to('K')
-        grads = [((temps[i+1] - temps[i]) / temps[i]) for i in range (len(temps) - 1)]
-        radius_max_prof = radii[np.argmin(grads) + 1].to("pc")
-        yt.mylog.info(f"Profile radius of ST in {dump_name} is {radius_max_prof}")
-    else :
-        grad_field = "El_fraction"
-        line_color = "green"
-    means = [np.mean(x) for x in zip(*[df[f'{grad_field}_{n}/array_data'] for n in range (NUM_RAYS)])]
-    grads = [((means[i+1] - means[i]) / means[i]) for i in range (len(means) - 1)]
-    index_max = np.argmin(grads) + 1
+    time = get_time_z(dump_name, star_type)[0].to('Myr')
+    star_lifetime = get_lifetime_offset(star_type)
+    if (time > TIME_OFFSET):
+        if (time > star_lifetime):
+            grad_field = "temperature"
+            line_color = "red"
+        else :
+            grad_field = "El_fraction"
+            line_color = "green"
+        means = [np.mean(x) for x in zip(*[df[f'{grad_field}_{n}/array_data'] for n in range (NUM_RAYS)])]
+        grads = [((means[i+1] - means[i]) / means[i]) for i in range (len(means) - 1)]
+        index_max = np.argmin(grads) + 1
 
     v_para = [unyt_array(df[f'velocity_para_{n}/array_data'], 'km/s') for n in range (NUM_RAYS)]
     v_norm = [unyt_array(df[f'velocity_norm_{n}/array_data'], 'km/s') for n in range (NUM_RAYS)]
@@ -105,10 +99,9 @@ for i, ray_file in enumerate(ray_files):
     plt.xlim(0.0, 400.0)
     plt.yscale('log')
     plt.ylim(1e-17, 1e-10)
-    plt.axvline(x= distances[index_max], color= line_color)
+    if (time > TIME_OFFSET):
+        plt.axvline(x= distances[index_max], color= line_color)
     plt.axvline(x= halo_distances[i], color='blue')
-    if (get_time_z(dump_name, star_type)[0] > get_lifetime_offset(star_type)):
-        plt.axvline(x= radius_max_prof, color='red', linestyle=':')
     plt.savefig(os.path.join(OUTDIR_PHI, f"DD{get_dump_num(dump_name)}_phi.png"))
     plt.close()
 
@@ -120,10 +113,9 @@ for i, ray_file in enumerate(ray_files):
     plt.xlim(0.0, 400.0)
     plt.yscale('log')
     plt.ylim(1e-10, 1e4)
-    plt.axvline(x= distances[index_max], color= line_color)
+    if (time > TIME_OFFSET):
+        plt.axvline(x= distances[index_max], color= line_color)
     plt.axvline(x= halo_distances[i], color='blue')
-    if (get_time_z(dump_name, star_type)[0] > get_lifetime_offset(star_type)):
-        plt.axvline(x= radius_max_prof, color='red', linestyle=':')
     plt.savefig(os.path.join(OUTDIR_MU, f"DD{get_dump_num(dump_name)}_mu.png"))
     plt.close()
 
@@ -135,9 +127,8 @@ for i, ray_file in enumerate(ray_files):
     plt.xlim(0.0, 400.0)
     plt.yscale('log')
     plt.ylim(1e15, 1e25)
-    plt.axvline(x= distances[index_max], color= line_color)
+    if (time > TIME_OFFSET):
+        plt.axvline(x= distances[index_max], color= line_color)
     plt.axvline(x= halo_distances[i], color='blue')
-    if (get_time_z(dump_name, star_type)[0] > get_lifetime_offset(star_type)):
-        plt.axvline(x= radius_max_prof, color='red', linestyle=':')
     plt.savefig(os.path.join(OUTDIR_NU, f"DD{get_dump_num(dump_name)}_nu.png"))
     plt.close()

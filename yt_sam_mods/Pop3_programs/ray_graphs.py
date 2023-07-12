@@ -23,10 +23,11 @@ MU = 1.6
 INDIR = "Sobolev/Ray_profiles"
 OUTDIR = "Sobolev/Ray_graphs"
 DISTANCE_FILE = "ray_distances.txt"
+
 NUM_RAYS = 10
 FIELDS = ['density', 'dark_matter_density', 'H2_p0_fraction', 'El_fraction', 'cooling_time', \
           'temperature', 'pressure', 'metallicity3', 'entropy', 'velocity_norm', 'velocity_para']
-CUSTOM_LIMS = (1e-29, 1e-21)
+
 
 
 try :
@@ -43,21 +44,28 @@ distances = unyt_array([float(distance) for distance in distances], 'pc')
 
 RHO_BKGRD = unyt_quantity(1e-25, 'g/cm**3')
 E_FACTOR = (get_sn_energy(star_type) / RHO_BKGRD)**(1/5)
+TIME_OFFSET = unyt_quantity(0.15, 'Myr')
 
-datasets = glob.glob(os.path.join(INDIR, "DD*_packed.h5"))
-datasets = sorted(datasets)
+datasets = sorted(glob.glob(os.path.join(INDIR, "DD*_packed.h5")))
 for i, dataset in enumerate(datasets):
+    
     dump_name = os.path.basename(dataset)
-    ds = h5py.File(dataset, 'r')
-    if (get_time_z(dump_name, star_type)[0] > get_lifetime_offset(star_type)):
-        grad_field = "temperature"
-    else :
-        grad_field = "El_fraction"
-    means = transpose_unyt([np.mean(transpose_unyt(x)) for x in \
-                            zip(*[unyt_array(ds[f'{grad_field}_{n}/array_data'], 'g/cm**3') for n in range (NUM_RAYS)])])
-    grads = [((means[i+1] - means[i]) / means[i]) for i in range (len(means) - 1)]
-    index_max = np.argmin(transpose_unyt(grads)) + 1
-    dist_theo = (E_FACTOR * (get_time_z(dump_name, star_type)[0] - get_lifetime_offset(star_type))**(2/5)).to('pc')
+    try :
+        ds = h5py.File(dataset, 'r')
+    except Exception:
+        continue
+    time = get_time_z(dump_name, star_type)[0].to('Myr')
+    star_lifetime = get_lifetime_offset(star_type)
+    if (time > TIME_OFFSET):
+        if (time > star_lifetime):
+            grad_field = "temperature"
+        else :
+            grad_field = "El_fraction"
+        means = [np.mean(x) for x in zip(*[ds[f'{grad_field}_{n}/array_data'] for n in range (NUM_RAYS)])]
+        grads = [((means[i+1] - means[i]) / means[i]) for i in range (len(means) - 1)]
+        index_max = np.argmin(grads) + 1
+        dist_theo = (E_FACTOR * (get_time_z(dump_name, star_type)[0] - get_lifetime_offset(star_type))**(2/5)).to('pc')
+    
     for field in FIELDS:    
         field_dict = get_field_dict(field)
         plt.figure()
@@ -72,11 +80,12 @@ for i, dataset in enumerate(datasets):
             plt.yscale('log')
         if ('velocity' in field):
             plt.axhline(y= 0.0)
-        if (get_time_z(dump_name, star_type)[0] > get_lifetime_offset(star_type)):
-            plt.axvline(x= dist_theo, color='red', linestyle='--')
-            plt.axvline(x= ds[f"distances/array_data"][index_max], color='red')
-        else :
-            plt.axvline(x= ds[f"distances/array_data"][index_max], color='green')
+        if (time > TIME_OFFSET):
+            if (time > star_lifetime):
+                plt.axvline(x= dist_theo, color='red', linestyle='--')
+                plt.axvline(x= ds[f"distances/array_data"][index_max], color='red')
+            else :
+                plt.axvline(x= ds[f"distances/array_data"][index_max], color='green')
         plt.axvline(x= distances[i], color='blue')
         plt.ylim(field_dict['limits'])
         plt.savefig(os.path.join(OUTDIR, f"DD{get_dump_num(dump_name)}_{field}.png"))

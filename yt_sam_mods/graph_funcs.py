@@ -9,8 +9,8 @@ SIMULATION = "simulation.h5"
 
 T0_CCSNe = unyt_quantity(211.31, 'Myr')
 T0_HNe = unyt_quantity(211.31, 'Myr')
-#T0_PISNe = unyt_quantity(211.31, 'Myr')
-T0_PISNe = unyt_quantity(211.16, 'Myr')
+T0_PISNe = unyt_quantity(211.06, 'Myr')
+#T0_PISNe = unyt_quantity(211.16, 'Myr')
 
 TLIFE_CCSNe = unyt_quantity(3.86, 'Myr')
 TLIFE_HNe = unyt_quantity(3.86, 'Myr')
@@ -28,7 +28,7 @@ LIMS_ENTROPY = (1e-2, 5e2)
 LIMS_INTENSITY = (1e-6, 1e7)
 LIMS_CTIME = (1e-4, 1e9)
 LIMS_BE_RATIO = (1e-4, 1e2)
-LIMS_VELOCITY = (-1e6, 1e6)
+LIMS_VELOCITY = (-1e1, 3e1)
 LIMS_CS = (0, 1e6)
 LIMS_MDOT = (1e-5, 1e-2)
 LIMS_MDOT_Z = (1e-8, 1e-5)
@@ -46,7 +46,7 @@ FIELD_DICTS.append({'name': 'entropy', 'units': 'erg*cm**2', 'limits': LIMS_ENTR
 FIELD_DICTS.append({'name': 'cooling_intensity', 'units': 'K/cm**6', 'limits': LIMS_INTENSITY, 'colormap': 'plasma', 'log': True})
 FIELD_DICTS.append({'name': 'cooling_time', 'units': 'Myr', 'limits': LIMS_CTIME, 'colormap': 'plasma', 'log': True})
 FIELD_DICTS.append({'name': 'bonnor_ebert_ratio', 'units': '', 'limits': LIMS_BE_RATIO, 'colormap': 'cividis', 'log': True})
-FIELD_DICTS.append({'name': 'velocity', 'units': 'km/s', 'limits': LIMS_VELOCITY, 'colormap': 'spring', 'log': False})
+FIELD_DICTS.append({'name': 'velocity', 'units': 'cm/s', 'limits': LIMS_VELOCITY, 'colormap': 'spring', 'log': False}) # <-----  Change back to 'km/s' once done
 FIELD_DICTS.append({'name': 'sound_speed', 'units': 'km/s', 'limits': LIMS_CS, 'colormap': 'spring', 'log': False})
 FIELD_DICTS.append({'name': 'accretion_rate', 'units': 'Msun/yr', 'limits': LIMS_MDOT, 'colormap': 'magma', 'log': True})
 FIELD_DICTS.append({'name': 'accretion_rate_z', 'units': 'Msun/yr', 'limits': LIMS_MDOT_Z, 'colormap': 'magma', 'log': True})
@@ -119,16 +119,18 @@ def get_sn_energy(star_mode):
 
 
 def get_dump_num(filename):
-    print(filename)
     dump_num = re.search(r'^DD([0-9]{4})(_[-_a-zA-Z0-9]+\.h5)?$', filename).group(1)
     return dump_num
 
 
-def get_time_z(filename, star_mode):
+def get_time_z(filename, star_mode, sim_file=None):
     time_offset = get_time_offset(star_mode)
     dump = f"DD{get_dump_num(filename)}"
     fname = '/'.join([dump, dump]).encode()
-    sim = yt.load(SIMULATION)
+    if (sim_file == None):
+        sim = yt.load(SIMULATION)
+    else :
+        sim = yt.load(sim_file)
     time = sim.data['time'][np.argwhere(sim.data['filename'] == fname).item()].in_units('Myr') - time_offset
     z = sim.data['redshift'][np.where(sim.data['filename'] == fname)][0].value
     return (time, z)

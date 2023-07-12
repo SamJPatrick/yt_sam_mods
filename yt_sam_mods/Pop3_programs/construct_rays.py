@@ -135,12 +135,10 @@ def profile_rays(node, outdir= '.'):
             field_dict[field][n] = ray[field][np.argsort(ray['t'])].to(get_field_dict(field)['units'])
             yt.mylog.info(f"Calculated ray {n} for {field}")
         for field in VEC_FIELDS:
-            vec_field_dict[f'{field}_para'][n] = transpose_unyt([transpose_unyt([ray[f'{field}_{ax}'][np.argsort(ray['t'])][i] \
-                                                                                 for ax in 'xyz']).dot(ray.vec / ray_length) \
-                                                                 for i in range (len(ray['t']))])
-            vec_field_dict[f'{field}_norm'][n] = transpose_unyt([transpose_unyt([ray[f'{field}_{ax}'][np.argsort(ray['t'])][i] \
-                                                                                 for ax in 'xyz']).dot(ortho_vec) \
-                                                                 for i in range (len(ray['t']))])
+            vec_field_dict[f'{field}_para'][n] = transpose_unyt(
+                [transpose_unyt([ray[f'{field}_{ax}'][np.argsort(ray['t'])][i] for ax in 'xyz']).to(get_field_dict(field)['units']).dot(ray.vec / ray_length) for i in range (len(ray['t']))])
+            vec_field_dict[f'{field}_norm'][n] = transpose_unyt(
+                [transpose_unyt([ray[f'{field}_{ax}'][np.argsort(ray['t'])][i] for ax in 'xyz']).to(get_field_dict(field)['units']).dot(ortho_vec) for i in range (len(ray['t']))])
             yt.mylog.info(f"Calculated ray {n} for {field}")
         distances[n] = sorted(ray['t']) * ray_length
     field_dict.update(vec_field_dict)
@@ -256,8 +254,8 @@ if __name__ == "__main__":
     ap.add_operation(align_sphere)
     ap.add_operation(get_rays, num_rays= NUM_RAYS)
     
-    ap.add_operation(profile_rays, outdir= OUTDIR_PROF)
-    ap.add_operation(plot_rays, star_type, outdir= OUTDIR_PLOT, color= RAY_COLOR)
+    #ap.add_operation(profile_rays, outdir= OUTDIR_PROF)
+    #ap.add_operation(plot_rays, star_type, outdir= OUTDIR_PLOT, color= RAY_COLOR)
     ap.add_operation(ray_projections, star_type, outdir= OUTDIR_PROJ, num_slices= None)
     
     ap.add_operation(delattrs, ["sphere", "ds"], always_do=True)
