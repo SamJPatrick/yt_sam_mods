@@ -6,6 +6,7 @@ yt.enable_parallelism()
 import numpy as np
 
 from ytree.analysis import AnalysisPipeline
+from yt.utilities.math_utils import ortho_find
 
 from yt.extensions.sam_mods.misc import *
 from yt.extensions.sam_mods.profiles import my_profile
@@ -26,7 +27,7 @@ OUTDIR_PROJ = "Slices_ray"
 
 STRETCH_FACTOR = 1.2
 COMPACT_FACTOR = 10.0
-NUM_RAYS = 20
+NUM_RAYS = 10
 RAY_COLOR = 'orange'
 BOXSIZE = (1000.0, 'pc')
 
@@ -60,7 +61,7 @@ def pack_fields(distance_arr, field_dict):
                 if (ref_ray[i] >= distance_arr[num][-1]):
                     ind2 = len(distance_arr[num]) - 1
                 else :
-                    ind2 = np.argwhere((distance_arr[num] - ref_ray[i]) > 0)[0].item()
+                    ind2 = np.argwhere(distance_arr[num] - ref_ray[i] > 0)[0].item()
                 packed_dict[field][num][i] = field_dict[field][num][ind1] + \
                     ((field_dict[field][num][ind2] - field_dict[field][num][ind1]) \
                      / (distance_arr[num][ind2] - distance_arr[num][ind1])) * (ref_ray[i] -  distance_arr[num][ind1])
@@ -77,7 +78,7 @@ def get_rays(node, num_rays= 10):
     halo_center = sphere.center.to('pc')
     star_coords = ds.arr(POP3_POSITION, 'code_length').to('pc')
     d_halo = ds.quan(np.linalg.norm((halo_center - star_coords).to('pc')), 'pc')
-
+    
     unit_vec = (star_coords - halo_center) / d_halo
     master_ray = ds.r[star_coords:halo_center]
     distances = sorted(master_ray['t']) * d_halo
@@ -90,9 +91,8 @@ def get_rays(node, num_rays= 10):
     diff_max = np.arctan(sphere.radius / (d_halo * COMPACT_FACTOR))
     vec_length = d_halo + STRETCH_FACTOR * sphere.radius
     x, y, z = halo_center - star_coords
-
-    ray = [None for n in range (num_rays)]
-    psi = unyt_array(np.zeros(num_rays), 'dimensionless')
+    probe_psis = unyt_array(np.zeros(num_rays), 'dimensionless')
+    probe_rays = [None for n in range (num_rays)]
     for n in range(num_rays):
         if (n == 0):
             scatter_theta = 0
@@ -102,66 +102,46 @@ def get_rays(node, num_rays= 10):
             scatter_phi = np.random.uniform(low= -diff_max/2, high=diff_max/2)
         theta = np.arctan2(np.sqrt(x**2 + y**2), z) + scatter_theta
         phi = np.arctan2(y, x) + scatter_phi
-        yt.mylog.info(f"Spherical angles theta & phi: {theta} & {phi}")
+        yt.mylog.info(f"Angles: {theta} & {phi}")
         x_ = vec_length * np.sin(theta) * np.cos(phi)
         y_ = vec_length * np.sin(theta) * np.sin(phi)
         z_ = vec_length * np.cos(theta)
         vec_end = star_coords + transpose_unyt([x_, y_, z_])
-        ray[n] = ds.r[star_coords:vec_end]
-        psi[n] = np.arctan(np.sqrt(np.tan(phi)**2 + np.tan(theta)**2))
-        yt.mylog.info(f"Cylindrical angle psi : {psi[n]}")
+        probe_rays[n] = ds.r[star_coords:vec_end]
+        probe_psis[n] = np.arctan(np.sqrt(np.tan(phi)**2 + np.tan(theta)**2))
 
     node.master_ray = master_ray
-    node.rays = ray
-    node.psis = psi
+    node.probe_psis = probe_psis
+    node.probe_rays = probe_rays
 
 
 
 
 def profile_rays(node, outdir= '.'):
 
-    rays = node.rays
+    rays = node.probe_rays
     num_rays = len(rays)
     field_dict = {field: [[] for n in range (num_rays)] for field in FIELDS}
     vec_field_dict = {**{f'{field}_para': [[] for n in range (num_rays)] for field in VEC_FIELDS}, \
-                      **{f'{field}_rad': [[] for n in range (num_rays)] for field in VEC_FIELDS}, \
-                      **{f'{field}_phi': [[] for n in range (num_rays)] for field in VEC_FIELDS}}
+                      **{f'{field}_norm': [[] for n in range (num_rays)] for field in VEC_FIELDS}}
     distances = [[] for n in range (num_rays)]
-
+    
     for n, ray in enumerate(rays):
-        yt.mylog.info(f"Ray vector for ray {n} is {(ray.vec).to('pc')}")
+        ortho_vec = ortho_find(ray.vec.to('pc'))[1]
+        yt.mylog.info(f"Ray vector is {(ray.vec).to('pc')}")
+        yt.mylog.info(f"Orthogonal vector is {ortho_vec}")
         ray_length = unyt_quantity(np.linalg.norm((ray.vec).to('pc')), 'pc')
-        distances[n] = sorted(ray['t']) * ray_length
-        
         for field in FIELDS:
             field_dict[field][n] = ray[field][np.argsort(ray['t'])].to(get_field_dict(field)['units'])
-            yt.mylog.info(f"Calculated {field} for ray {n}")
-
-        vec_norms = [[] for i in range (len(ray['t']))]
-        for i in range (len(ray['t'])):
-            distance_ray = sorted(ray['t'])[i] * ray_length
-            try :
-                index_main = np.argwhere((distance_ray - distances[0]) >= 0)[-1].item()
-            except IndexError:
-                index_main = len(rays[0]['t']) - 1
-            vec_norms[i] = [ray[('gas', 'x')][i] - rays[0][('gas', 'x')][index_main], \
-                            ray[('gas', 'y')][i] - rays[0][('gas', 'y')][index_main], \
-                            ray[('gas', 'z')][i] - rays[0][('gas', 'z')][index_main]]
-        vec_radials = [vec_norm / np.linalg.norm(vec_norm) for vec_norm in vec_norms]
-        vec_phis = [np.cross(vec_rad, ray.vec / ray_length) for vec_rad in vec_radials]
-        
+            yt.mylog.info(f"Calculated ray {n} for {field}")
         for field in VEC_FIELDS:
             vec_field_dict[f'{field}_para'][n] = transpose_unyt(
-                [transpose_unyt([ray[f'{field}_{ax}'][np.argsort(ray['t'])][i] for ax in 'xyz']).to(get_field_dict(field)['units']).dot(ray.vec / ray_length) \
-                 for i in range (len(ray['t']))])
-            vec_field_dict[f'{field}_rad'][n] = transpose_unyt(
-                [transpose_unyt([ray[f'{field}_{ax}'][np.argsort(ray['t'])][i] for ax in 'xyz']).to(get_field_dict(field)['units']).dot(vec_radials[i]) \
-                 for i in range (len(ray['t']))])
-            vec_field_dict[f'{field}_phi'][n] = transpose_unyt(
-                [transpose_unyt([ray[f'{field}_{ax}'][np.argsort(ray['t'])][i] for ax in 'xyz']).to(get_field_dict(field)['units']).dot(vec_phis[i]) \
-                 for i in range (len(ray['t']))])
-            yt.mylog.info(f"Calculated ray {n} for {field}")            
-        field_dict.update(vec_field_dict)
+                [transpose_unyt([ray[f'{field}_{ax}'][np.argsort(ray['t'])][i] for ax in 'xyz']).to(get_field_dict(field)['units']).dot(ray.vec / ray_length) for i in range (len(ray['t']))])
+            vec_field_dict[f'{field}_norm'][n] = transpose_unyt(
+                [transpose_unyt([ray[f'{field}_{ax}'][np.argsort(ray['t'])][i] for ax in 'xyz']).to(get_field_dict(field)['units']).dot(ortho_vec) for i in range (len(ray['t']))])
+            yt.mylog.info(f"Calculated ray {n} for {field}")
+        distances[n] = sorted(ray['t']) * ray_length
+    field_dict.update(vec_field_dict)
 
     outfile = os.path.join(os.getcwd(), outdir, f"{str(node.ds)}_sobolev.h5")
     for field in field_dict.keys():
@@ -169,7 +149,7 @@ def profile_rays(node, outdir= '.'):
             field_dict[field][n].write_hdf5(outfile, group_name= f"{field}_{n}")
     for n in range (num_rays):
         distances[n].write_hdf5(outfile, group_name= f"distances_{n}")
-    node.psis.write_hdf5(outfile, group_name="angle_list")
+    node.probe_psis.write_hdf5(outfile, group_name="angle_list")
 
     distances_packed, packed_dict = pack_fields(distances, field_dict)
     outfile = os.path.join(os.getcwd(), outdir, f"{str(node.ds)}_packed.h5")
@@ -177,14 +157,14 @@ def profile_rays(node, outdir= '.'):
         for n in range (num_rays):
             packed_dict[field][n].write_hdf5(outfile, group_name= f"{field}_{n}")
     distances_packed.write_hdf5(outfile, group_name= f"distances")
-    node.psis.write_hdf5(outfile, group_name="angle_list")
+    node.probe_psis.write_hdf5(outfile, group_name="angle_list")
 
 
 
 
 def plot_rays(node, star_mode, outdir= '.', color= 'orange', width= 1):
 
-    rays = node.rays
+    rays = node.probe_rays
     ds = node.ds
     halo_center = node.sphere.center.to('pc')
     plots = [yt.ProjectionPlot(ds, ax, ('gas', 'density'), center= halo_center, width= BOXSIZE) for ax in 'xyz']
@@ -208,7 +188,7 @@ def ray_projections(node, star_mode, outdir= '.', num_slices= 20):
     ds = node.ds
     ray_vec = ds.arr(ray.vec, 'code_length').to('pc')
     north_vecs = ortho_find(ray.vec)[1:]
-
+    
     if ((type(num_slices) is int) and num_slices > 0):
         centers_para = [ray.start_point + ray.vec * dx for dx in np.linspace(0.0, 1.0, num= num_slices)]
     else :
@@ -273,18 +253,18 @@ if __name__ == "__main__":
     ap.add_operation(return_sphere)
     ap.add_operation(align_sphere)
     ap.add_operation(get_rays, num_rays= NUM_RAYS)
-
-    ap.add_operation(profile_rays, outdir= OUTDIR_PROF)
-    ap.add_operation(plot_rays, star_type, outdir= OUTDIR_PLOT, color= RAY_COLOR)
-    #ap.add_operation(ray_projections, star_type, outdir= OUTDIR_PROJ, num_slices= None)
-
+    
+    #ap.add_operation(profile_rays, outdir= OUTDIR_PROF)
+    #ap.add_operation(plot_rays, star_type, outdir= OUTDIR_PLOT, color= RAY_COLOR)
+    ap.add_operation(ray_projections, star_type, outdir= OUTDIR_PROJ, num_slices= None)
+    
     ap.add_operation(delattrs, ["sphere", "ds"], always_do=True)
     ap.add_operation(garbage_collect, 60, always_do=True)
 
     tree = a[0]
-    N_COMPLETED = 50
-    tree_mod = list(tree['prog'])[N_COMPLETED:]
-    for node in ytree.parallel_trees(tree_mod):
-        ap.process_target(node)
-    #for node in ytree.parallel_tree_nodes(tree, group="prog"):
+    #N_COMPLETED = 11
+    #tree_mod = list(tree['prog'])[N_COMPLETED:]
+    #for node in ytree.parallel_trees(tree_mod):
     #    ap.process_target(node)
+    for node in ytree.parallel_tree_nodes(tree, group="prog"):
+        ap.process_target(node)

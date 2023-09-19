@@ -46,7 +46,7 @@ FIELD_DICTS.append({'name': 'entropy', 'units': 'erg*cm**2', 'limits': LIMS_ENTR
 FIELD_DICTS.append({'name': 'cooling_intensity', 'units': 'K/cm**6', 'limits': LIMS_INTENSITY, 'colormap': 'plasma', 'log': True})
 FIELD_DICTS.append({'name': 'cooling_time', 'units': 'Myr', 'limits': LIMS_CTIME, 'colormap': 'plasma', 'log': True})
 FIELD_DICTS.append({'name': 'bonnor_ebert_ratio', 'units': '', 'limits': LIMS_BE_RATIO, 'colormap': 'cividis', 'log': True})
-FIELD_DICTS.append({'name': 'velocity', 'units': 'cm/s', 'limits': LIMS_VELOCITY, 'colormap': 'spring', 'log': False}) # <-----  Change back to 'km/s' once done
+FIELD_DICTS.append({'name': 'velocity', 'units': 'km/s', 'limits': LIMS_VELOCITY, 'colormap': 'spring', 'log': False}) # <-----  Change back to 'km/s' once done
 FIELD_DICTS.append({'name': 'sound_speed', 'units': 'km/s', 'limits': LIMS_CS, 'colormap': 'spring', 'log': False})
 FIELD_DICTS.append({'name': 'accretion_rate', 'units': 'Msun/yr', 'limits': LIMS_MDOT, 'colormap': 'magma', 'log': True})
 FIELD_DICTS.append({'name': 'accretion_rate_z', 'units': 'Msun/yr', 'limits': LIMS_MDOT_Z, 'colormap': 'magma', 'log': True})

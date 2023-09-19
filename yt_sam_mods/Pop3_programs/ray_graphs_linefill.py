@@ -26,10 +26,11 @@ INDIR_PROF = "Profiles_pop3/Normal_profiles_lin"
 OUTDIR = "Sobolev/Ray_graphs_linefill"
 DISTANCE_FILE = "ray_distances.txt"
 
-NUM_RAYS = 10
-FIELDS = ['El_fraction', 'temperature', 'velocity_norm', 'velocity_para']
-DATASET_NUMS = [100, 101, 103, 105]
-COLORS = ['blue', 'orange', 'magenta', 'cyan']
+NUM_RAYS = 20
+FIELDS = ['El_fraction', 'temperature', 'velocity_para', 'velocity_rad']
+#DATASET_NUMS = [100, 110]
+DATASET_NUMS = [120, 130, 140, 150, 160]
+COLORS = ['blue', 'orange', 'magenta', 'cyan', 'brown', 'red']
 
 
 try :
@@ -81,13 +82,13 @@ for field in FIELDS:
             index_max = np.argmin(grads) + 1
             dist_theo = (E_FACTOR * (get_time_z(dump_name, star_type)[0] - get_lifetime_offset(star_type))**(2/5)).to('pc')
 
-        rays_max = transpose_unyt([np.max(transpose_unyt(x)) for x in \
+        rays_max = transpose_unyt([np.nanmax(transpose_unyt(x)) for x in \
                               zip(*[unyt_array(ds_rays[f'{field}_{n}/array_data'], field_dict['units']) for n in range (NUM_RAYS)])])
-        rays_min = transpose_unyt([np.min(transpose_unyt(x)) for x in \
+        rays_min = transpose_unyt([np.nanmin(transpose_unyt(x)) for x in \
                               zip(*[unyt_array(ds_rays[f'{field}_{n}/array_data'], field_dict['units']) for n in range (NUM_RAYS)])])
-        arr_ray = transpose_unyt([np.mean(transpose_unyt(x)) for x in \
+        arr_ray = transpose_unyt([np.nanmean(transpose_unyt(x)) for x in \
                               zip(*[unyt_array(ds_rays[f'{field}_{n}/array_data'], field_dict['units']) for n in range (NUM_RAYS)])])
-        if (field == 'velocity_norm'):
+        if (field == 'velocity_rad'):
             used = ds_vels.profile.used
             radii = ds_vels.profile.x[used]
             arr_ray = arr_ray.to('km/s')
@@ -126,5 +127,5 @@ for field in FIELDS:
     plt.xlim(0.0, 400.0)
     plt.ylim(field_dict['limits'])
     plt.legend(loc='upper right')
-    plt.savefig(os.path.join(OUTDIR, f"{field}_combined_rays.png"))
+    plt.savefig(os.path.join(OUTDIR, f"{field}_linefill_st.png"))
     plt.close()

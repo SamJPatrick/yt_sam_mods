@@ -22,11 +22,11 @@ MU = 1.6
 
 INDIR = "Sobolev/Ray_profiles"
 OUTDIR = "Sobolev/Ray_graphs"
-DISTANCE_FILE = "ray_distances.txt"
+#DISTANCE_FILE = "ray_distances.txt"
 
-NUM_RAYS = 10
+NUM_RAYS = 20
 FIELDS = ['density', 'dark_matter_density', 'H2_p0_fraction', 'El_fraction', 'cooling_time', \
-          'temperature', 'pressure', 'metallicity3', 'entropy', 'velocity_norm', 'velocity_para']
+          'temperature', 'pressure', 'metallicity3', 'entropy', 'velocity_para', 'velocity_rad', 'velocity_phi']
 
 
 
@@ -37,10 +37,10 @@ except IndexError:
     pass
 
 
-with open(DISTANCE_FILE, newline='\n') as myfile:
-    reader = list(csv.reader(myfile, delimiter= '\t'))
-dumps, distances = zip(*[entry for entry in reader])
-distances = unyt_array([float(distance) for distance in distances], 'pc')
+#with open(DISTANCE_FILE, newline='\n') as myfile:
+#    reader = list(csv.reader(myfile, delimiter= '\t'))
+#dumps, distances = zip(*[entry for entry in reader])
+#distances = unyt_array([float(distance) for distance in distances], 'pc')
 
 RHO_BKGRD = unyt_quantity(1e-25, 'g/cm**3')
 E_FACTOR = (get_sn_energy(star_type) / RHO_BKGRD)**(1/5)
@@ -86,60 +86,7 @@ for i, dataset in enumerate(datasets):
                 plt.axvline(x= ds[f"distances/array_data"][index_max], color='red')
             else :
                 plt.axvline(x= ds[f"distances/array_data"][index_max], color='green')
-        plt.axvline(x= distances[i], color='blue')
+        #plt.axvline(x= distances[i], color='blue')
         plt.ylim(field_dict['limits'])
         plt.savefig(os.path.join(OUTDIR, f"DD{get_dump_num(dump_name)}_{field}.png"))
         plt.close()
-
-
-'''    
-for dataset in datasets:
-    df = h5py.File(dataset, 'r')
-    dump_name = os.path.basename(dataset)
-    
-    #distances = unyt_array(df[f'distances_{n}/array_data'], 'pc')
-    distances = unyt_array(df['distances'][:], 'pc')
-    #velocities = unyt_array(df[f'velocity_{n}/array_data'], 'km/s')
-    velocities = transpose_unyt([np.mean(transpose_unyt(vels)) for vels in \
-                                 zip(*[unyt_array(df[f'velocity_{n}'][:], 'km/s') for n in range (NUM_RAYS)])])
-    #temperatures = unyt_array(df[f'temperature_{n}/array_data'], 'K')
-    temperatures = transpose_unyt([np.mean(transpose_unyt(temps)) for temps in \
-                                   zip(*[unyt_array(df[f'temperature_{n}'][:], 'K') for n in range (NUM_RAYS)])])
-    #densities = unyt_array(df[f'distances_{n}/array_data'], 'pc')
-    densities = transpose_unyt([np.mean(transpose_unyt(dens)) for dens in \
-                                zip(*[unyt_array(df[f'density_{n}'][:], 'g/cm**3') for n in range (NUM_RAYS)])])
-        
-    velocities_diff = transpose_unyt([(velocities[i+1] - velocities[i]) / (distances[i+1] - distances[i]) \
-                                    for i in range (len(velocities) - 1)])
-    temperatures_diff = transpose_unyt([(temperatures[i+1] - temperatures[i]) / (distances[i+1] - distances[i]) \
-                                    for i in range (len(temperatures) - 1)])
-
-    plt.figure()
-    plt.title(get_title(dump_name, star_type))
-    accl_vel = np.abs(velocities[1:] * velocities_diff).to('m*s**(-2)')
-    accl_temp = np.abs((GAMMA/(GAMMA-1))*(kb/(MU*mh)) * temperatures_diff).to('m*s**(-2)')
-    plt.plot(distances[1:], accl_vel, label= 'velocity')
-    plt.plot(distances[1:], accl_temp, label= 'temperature')
-    plt.ylabel("$\dot{v} (m s^{-2})$")
-    plt.yscale('log')
-    plt.ylim(1e-15, 1e3)
-    plt.xlabel("Radius (pc)")
-    plt.xlim(0.0, 400.0)
-    plt.legend(loc= 'upper right')
-    plt.savefig(os.path.join(OUTDIR, f"DD{get_dump_num(dump_name)}_accelerations.png"))
-    plt.close()
-
-    
-    plt.figure()
-    plt.title(get_title(dump_name, star_type))
-    energy_vel = (densities * velocities**2).to('erg*m**(-3)')
-    energy_temp = ((1/(GAMMA-1))*(kb/(MU*mh)) * temperatures).to('erg*m**(-3)')
-    plt.plot(distances, energy_vel, energy_temp)
-    plt.ylabel("$E (erg)")
-    plt.yscale('log')
-    plt.xlabel("Radius (pc)")
-    plt.xlim(0.0, 400.0)
-    plt.savefig(os.path.join(OUTDIR, f"DD{get_dump_num(dump_name)}_energies.png"))
-    plt.close()
-    '''
-
