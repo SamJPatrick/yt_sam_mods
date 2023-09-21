@@ -27,9 +27,10 @@ OUTDIR = "Sobolev/Ray_graphs_linefill"
 DISTANCE_FILE = "ray_distances.txt"
 
 NUM_RAYS = 20
-FIELDS = ['El_fraction', 'temperature', 'velocity_para', 'velocity_rad']
-#DATASET_NUMS = [100, 110]
-DATASET_NUMS = [120, 130, 140, 150, 160]
+X_LIM = 400.0
+FIELDS = ['density', 'El_fraction', 'temperature', 'velocity_para']
+DATASET_NUMS = [100, 110]
+#DATASET_NUMS = [120, 130, 140, 150, 160]
 COLORS = ['blue', 'orange', 'magenta', 'cyan', 'brown', 'red']
 
 
@@ -46,8 +47,8 @@ dumps, distances = zip(*[entry for entry in reader])
 distances = unyt_array([float(distance) for distance in distances], 'pc')
 dumps = np.array(dumps)
 
-RHO_BKGRD = unyt_quantity(1e-25, 'g/cm**3')
-E_FACTOR = (get_sn_energy(star_type) / RHO_BKGRD)**(1/5)
+#RHO_BKGRD = unyt_quantity(1e-25, 'g/cm**3')
+#E_FACTOR = (get_sn_energy(star_type) / RHO_BKGRD)**(1/5)
 TIME_OFFSET = unyt_quantity(0.15, 'Myr')
 
 data_rays = sorted([os.path.join(INDIR_RAYS, f"DD{num:04d}_packed.h5") for num in DATASET_NUMS])
@@ -79,8 +80,8 @@ for field in FIELDS:
                 grad_field = "El_fraction"
             means = [np.mean(x) for x in zip(*[ds_rays[f'{grad_field}_{n}/array_data'] for n in range (NUM_RAYS)])]
             grads = [((means[i+1] - means[i]) / means[i]) for i in range (len(means) - 1)]
-            index_max = np.argmin(grads) + 1
-            dist_theo = (E_FACTOR * (get_time_z(dump_name, star_type)[0] - get_lifetime_offset(star_type))**(2/5)).to('pc')
+            indices = np.argsort(grads) 
+            #dist_theo = (E_FACTOR * (get_time_z(dump_name, star_type)[0] - get_lifetime_offset(star_type))**(2/5)).to('pc')
 
         rays_max = transpose_unyt([np.nanmax(transpose_unyt(x)) for x in \
                               zip(*[unyt_array(ds_rays[f'{field}_{n}/array_data'], field_dict['units']) for n in range (NUM_RAYS)])])
@@ -110,13 +111,15 @@ for field in FIELDS:
             plt.fill_between(ds_rays[f"distances/array_data"], rays_min, rays_max, alpha=0.2)
 
         if (time > TIME_OFFSET):
-            if (time > star_lifetime):
-                plt.axvline(x= dist_theo, color=COLORS[i], linestyle=':')
-                plt.axvline(x= ds_rays[f"distances/array_data"][index_max], color=COLORS[i], linestyle='--')
+            if (i == 4):
+                plt.axvline(x= ds_rays[f"distances/array_data"][indices[4]+1], color=COLORS[i], linestyle='--')
             else :
-                plt.axvline(x= ds_rays[f"distances/array_data"][index_max], color=COLORS[i], linestyle='--')
-        plt.axvline(x= distances[np.argwhere(f"DD{get_dump_num(dump_name)}" == dumps).item()], color=COLORS[i], linestyle='-')
-
+                plt.axvline(x= ds_rays[f"distances/array_data"][indices[0]+1], color=COLORS[i], linestyle='--')
+        #plt.axvline(x= distances[np.argwhere(f"DD{get_dump_num(dump_name)}" == dumps).item()], color=COLORS[i], linestyle='-')
+        x_halo = distances[np.argwhere(f"DD{get_dump_num(dump_name)}" == dumps).item()] / unyt_quantity(X_LIM, 'pc')
+        plt.annotate('', xy= (x_halo, 0.0), xycoords='axes fraction', xytext= (x_halo + 0.05, -0.1), \
+                     textcoords= 'axes fraction', arrowprops={'facecolor': COLORS[i], 'shrink': 0.05})
+        
     if (field_dict['log'] == True):
         plt.yscale('log')
     if ('velocity' in field):
@@ -124,8 +127,8 @@ for field in FIELDS:
     label = ' '.join(np.char.capitalize(field.split('_')))
     plt.ylabel(f"{label} ({field_dict['units']})")
     plt.xlabel("Radius (pc)")
-    plt.xlim(0.0, 400.0)
+    plt.xlim(0.0, X_LIM)
     plt.ylim(field_dict['limits'])
     plt.legend(loc='upper right')
-    plt.savefig(os.path.join(OUTDIR, f"{field}_linefill_st.png"))
+    plt.savefig(os.path.join(OUTDIR, f"{field}_linefill_hii.png"))
     plt.close()
