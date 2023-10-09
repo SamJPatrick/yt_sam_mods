@@ -1,4 +1,5 @@
 import glob
+import csv
 import h5py
 import sys
 import os
@@ -23,14 +24,18 @@ FILTER_WINDOW = 7
 
 INDIR_RAYS = "Sobolev/Ray_profiles"
 OUTDIR_NU = "Sobolev/"
+DISTANCE_FILE = "ray_distances.txt"
 
-COLORS = ['blue', 'orange', 'magenta', 'cyan', 'brown']
+COLORS = ['blue', 'orange', 'magenta', 'cyan', 'brown', 'red']
 #DATASET_NUMS = [120, 130, 140, 150, 160]
+#DATASET_NUMS = [165, 175, 190]
+DATASET_NUMS = [153, 157, 161, 173, 185]
 
 MU = 1.6
 GAMMA = 5/3
 CONV_CONST = kb / (MU * mh)
-
+Z0 = unyt_quantity(1e-7, 'Zsun')
+NU_LIMS = unyt_array([1e29, 1e38], 'm**2/s')
 
 
 try :
@@ -39,7 +44,17 @@ except IndexError:
     star_type = ""
     pass
 
+
+with open(DISTANCE_FILE, newline='\n') as myfile:
+    reader = list(csv.reader(myfile, delimiter= '\t'))
+dumps, distances = zip(*[entry for entry in reader])
+distances = unyt_array([float(distance) for distance in distances], 'pc')
+dumps = np.array(dumps)
+x_halo = [distances[np.where(f"DD{num:04d}" == dumps)[0][0]] for num in DATASET_NUMS]
+
+
 ray_files = sorted([os.path.join(INDIR_RAYS, f"DD{num:04d}_packed.h5") for num in DATASET_NUMS])
+x_front = [0.0 for i in range (len(DATASET_NUMS))]
 plt.figure()
 plt.title(star_type.upper())
 for i, ray_file in enumerate(ray_files):
@@ -49,6 +64,18 @@ for i, ray_file in enumerate(ray_files):
     distances = unyt_array(df['distances/array_data'], 'pc')
     arr_len = len(distances)
     time = get_time_z(dump_name, star_type)[0].to('Myr')
+
+    mean_metals = unyt_array([np.mean(x) for x in zip(*[df[f'metallicity3_{n}/array_data'] for n in range (NUM_RAYS)])], 'Zsun')
+    indices = np.where(mean_metals < Z0)[0]
+    if (len(indices) == 0):
+        x_front[i] = x_front[i-1]
+        continue
+    for index in indices:
+        if (i==0 or distances[index] >= x_front[i-1]):
+            x_front[i] = distances[index]
+            break
+        if (x_front[i] == 0.0):
+            x_front[i] = x_front[i-1]
     
     v_para = [transpose_unyt(x) for x in zip(*[unyt_array(df[f'velocity_para_{n}/array_data'], 'km/s') for n in range (NUM_RAYS)])]
     v_rad = [transpose_unyt(x) for x in zip(*[unyt_array(df[f'velocity_rad_{n}/array_data'], 'km/s') for n in range (NUM_RAYS)])]
@@ -79,12 +106,14 @@ for i, ray_file in enumerate(ray_files):
     
     nu = (0.5 * CONV_CONST * (numer / denom)).to('m**2/s')
     plt.plot(distances[:-1], signal.medfilt(nu, kernel_size= FILTER_WINDOW), color= COLORS[i], label=f"{time:.2f}")
-    
-plt.legend(loc='lower right')
+
+plt.scatter(x_halo, [NU_LIMS[0] for i in range (len(x_halo))], color=COLORS[:len(x_halo)], marker= 'X')
+plt.scatter(x_front, [NU_LIMS[0] for i in range (len(x_front))], color=COLORS[:len(x_front)], marker= 'o')    
+plt.legend(loc='upper right')
 plt.ylabel(r"$\nu ~(m^{2} ~s^{-1})$")
 plt.xlabel("Radius (pc)")
 plt.xlim(0.0, 400.0)
 plt.yscale('log')
-plt.ylim(1e29, 1e38)
-plt.savefig(os.path.join(OUTDIR_NU, "nu_combined.png"))
+plt.ylim(*NU_LIMS)
+plt.savefig(os.path.join(OUTDIR_NU, "nu_combined_st.png"))
 plt.close()

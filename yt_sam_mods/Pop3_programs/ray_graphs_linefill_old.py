@@ -27,17 +27,10 @@ OUTDIR = "Sobolev/Ray_graphs_linefill"
 DISTANCE_FILE = "ray_distances.txt"
 
 NUM_RAYS = 20
-X_LIM = unyt_quantity(400.0, 'pc')
-Z0 = unyt_quantity(1e-7, 'Zsun')
-
-#FIELDS = ['density', 'El_fraction', 'temperature', 'velocity_para']
-FIELDS = ['El_fraction', 'metallicity3', 'temperature', 'velocity_para']
-#DATASET_NUMS = [100, 110]
+X_LIM = 400.0
+FIELDS = ['density', 'El_fraction', 'temperature', 'velocity_para']
+DATASET_NUMS = [100, 110]
 #DATASET_NUMS = [120, 130, 140, 150, 160]
-#DATASET_NUMS = [139, 141, 145, 151]
-#DATASET_NUMS = [153, 157, 161, 173, 185]
-#DATASET_NUMS = [100, 101, 103, 106]
-DATASET_NUMS = [107, 111, 115, 127, 139]
 COLORS = ['blue', 'orange', 'magenta', 'cyan', 'brown', 'red']
 
 
@@ -53,8 +46,10 @@ with open(DISTANCE_FILE, newline='\n') as myfile:
 dumps, distances = zip(*[entry for entry in reader])
 distances = unyt_array([float(distance) for distance in distances], 'pc')
 dumps = np.array(dumps)
-x_halo = [distances[np.where(f"DD{num:04d}" == dumps)[0][0]] for num in DATASET_NUMS]
 
+#RHO_BKGRD = unyt_quantity(1e-25, 'g/cm**3')
+#E_FACTOR = (get_sn_energy(star_type) / RHO_BKGRD)**(1/5)
+TIME_OFFSET = unyt_quantity(0.15, 'Myr')
 
 data_rays = sorted([os.path.join(INDIR_RAYS, f"DD{num:04d}_packed.h5") for num in DATASET_NUMS])
 data_prof = sorted([os.path.join(INDIR_PROF, f"DD{num:04d}_profile_weight_field_cell_mass.h5") for num in DATASET_NUMS])
@@ -63,18 +58,10 @@ assert len(data_prof) == len(data_vels), "Error, unequal number of datasets foun
 assert len(data_vels) == len(data_rays), "Error, unequal number of datasets found"
 
 for field in FIELDS:
-
     field_dict = get_field_dict(field)
     plt.figure()
     plt.title(field.replace('_', ' ').capitalize())
-
-    times = transpose_unyt([get_time_z(os.path.basename(filename), star_type)[0].to('Myr') for filename in data_rays])
-    times_front = times[times > get_lifetime_offset(star_type)]
-    x_front = [0.0 for i in range (len(times_front))]
-    skip = 0
-
     for i in range (len(DATASET_NUMS)):
-
         try :
             ds_rays = h5py.File(data_rays[i], 'r')
             ds_norm = yt.load(data_prof[i])
@@ -83,21 +70,18 @@ for field in FIELDS:
             print(f"Error, could not load dataset {DATASET_NUMS[i]}, continuing")
             continue
 
-        distances_ray = unyt_array(ds_rays["distances/array_data"], 'pc')
-        if (times[i] > get_lifetime_offset(star_type)):
-            mean_metals = unyt_array([np.mean(x) for x in zip(*[ds_rays[f'metallicity3_{n}/array_data'] for n in range (NUM_RAYS)])], 'Zsun')
-            indices = np.where(mean_metals < Z0)[0]
-            if (len(indices) == 0):
-                x_front[i-skip] = x_front[i-skip-1]
-                continue
-            for index in indices:
-                if (i==0 or distances_ray[index] >= x_front[i-skip-1]):
-                    x_front[i-skip] = distances_ray[index]
-                    break
-            if (x_front[i-skip] == 0.0):
-                x_front[i-skip] = x_front[i-skip-1]
-        else :
-            skip += 1
+        dump_name = os.path.basename(data_rays[i])
+        time = get_time_z(dump_name, star_type)[0].to('Myr')
+        star_lifetime = get_lifetime_offset(star_type)
+        if (time > TIME_OFFSET):
+            if (time > star_lifetime):
+                grad_field = "temperature"
+            else :
+                grad_field = "El_fraction"
+            means = [np.mean(x) for x in zip(*[ds_rays[f'{grad_field}_{n}/array_data'] for n in range (NUM_RAYS)])]
+            grads = [((means[i+1] - means[i]) / means[i]) for i in range (len(means) - 1)]
+            indices = np.argsort(grads) 
+            #dist_theo = (E_FACTOR * (get_time_z(dump_name, star_type)[0] - get_lifetime_offset(star_type))**(2/5)).to('pc')
 
         rays_max = transpose_unyt([np.nanmax(transpose_unyt(x)) for x in \
                               zip(*[unyt_array(ds_rays[f'{field}_{n}/array_data'], field_dict['units']) for n in range (NUM_RAYS)])])
@@ -105,7 +89,6 @@ for field in FIELDS:
                               zip(*[unyt_array(ds_rays[f'{field}_{n}/array_data'], field_dict['units']) for n in range (NUM_RAYS)])])
         arr_ray = transpose_unyt([np.nanmean(transpose_unyt(x)) for x in \
                               zip(*[unyt_array(ds_rays[f'{field}_{n}/array_data'], field_dict['units']) for n in range (NUM_RAYS)])])
-
         if (field == 'velocity_rad'):
             used = ds_vels.profile.used
             radii = ds_vels.profile.x[used]
@@ -120,18 +103,23 @@ for field in FIELDS:
             used = ds_norm.profile.used
             radii = ds_norm.profile.x[used]
             arr_prof = ds_norm.profile[('data', field)][used].to(field_dict['units'])
-
-        plt.plot(distances_ray, arr_ray, color= COLORS[i], label= f'{times[i]:.2f}')
+        plt.plot(ds_rays[f"distances/array_data"], arr_ray, color= COLORS[i], label= f'{time:.2f}')
         plt.plot(radii, arr_prof, color= COLORS[i], linestyle=':')
         if ("velocity" in field):
             plt.fill_between(ds_rays[f"distances/array_data"], rays_min.to('km/s'), rays_max.to('km/s'), alpha=0.2)
         else :
             plt.fill_between(ds_rays[f"distances/array_data"], rays_min, rays_max, alpha=0.2)
 
-    plt.scatter(x_halo, [field_dict['limits'][0] for i in range (len(x_halo))], color=COLORS[:len(x_halo)], marker= 'X')
-    if (len(times_front) > 0):
-        plt.scatter(x_front, [field_dict['limits'][0] for i in range (len(x_front))], color=COLORS[skip:len(x_halo)-skip], marker= 'o')
-
+        if (time > TIME_OFFSET):
+            if (i == 4):
+                plt.axvline(x= ds_rays[f"distances/array_data"][indices[4]+1], color=COLORS[i], linestyle='--')
+            else :
+                plt.axvline(x= ds_rays[f"distances/array_data"][indices[0]+1], color=COLORS[i], linestyle='--')
+        #plt.axvline(x= distances[np.argwhere(f"DD{get_dump_num(dump_name)}" == dumps).item()], color=COLORS[i], linestyle='-')
+        x_halo = distances[np.argwhere(f"DD{get_dump_num(dump_name)}" == dumps).item()] / unyt_quantity(X_LIM, 'pc')
+        plt.annotate('', xy= (x_halo, 0.0), xycoords='axes fraction', xytext= (x_halo + 0.05, -0.1), \
+                     textcoords= 'axes fraction', arrowprops={'facecolor': COLORS[i], 'shrink': 0.05})
+        
     if (field_dict['log'] == True):
         plt.yscale('log')
     if ('velocity' in field):
@@ -142,5 +130,5 @@ for field in FIELDS:
     plt.xlim(0.0, X_LIM)
     plt.ylim(field_dict['limits'])
     plt.legend(loc='upper right')
-    plt.savefig(os.path.join(OUTDIR, f"{field}_linefill_st.png"))
+    plt.savefig(os.path.join(OUTDIR, f"{field}_linefill_hii.png"))
     plt.close()

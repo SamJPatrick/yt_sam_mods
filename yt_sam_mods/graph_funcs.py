@@ -21,20 +21,21 @@ E_HNe = unyt_quantity(3e52, 'erg')
 E_PISNe = unyt_quantity(1e53, 'erg')
 
 LIMS_MASS = (1e-8, 1e6)
-LIMS_DENSITY = (1e-27, 1e-18)
-#LIMS_DENSITY = (1e-28, 1e-21)
+#LIMS_DENSITY = (1e-27, 1e-18)
+LIMS_DENSITY = (1e-28, 1e-21)
 LIMS_TEMPERATURE = (1e1, 1e8)
 LIMS_PRESSURE = (1e-15, 1e-9)
 LIMS_ENTROPY = (1e-2, 5e2)
 LIMS_INTENSITY = (1e-6, 1e7)
 LIMS_CTIME = (1e-4, 1e9)
 LIMS_BE_RATIO = (1e-4, 1e2)
-LIMS_VELOCITY = (-1e1, 3e1)
-#LIMS_VELOCITY = (-1e1, 4e1)
+#LIMS_VELOCITY = (-1e1, 3e1)
+LIMS_VELOCITY = (-3e1, 1.2e2)
 LIMS_CS = (0, 1e6)
 LIMS_MDOT = (1e-5, 1e-2)
 LIMS_MDOT_Z = (1e-8, 1e-5)
-LIMS_Z = (1e-7, 1e0)
+#LIMS_Z = (1e-7, 1e0)
+LIMS_Z = (1e-7, 1e1)
 LIMS_H2 = (1e-4, 5e-3)
 LIMS_EL = (1e-8, 1e0)
 
@@ -126,6 +127,7 @@ def get_dump_num(filename):
 
 
 def get_time_z(filename, star_mode, sim_file=None):
+    #print(f"Filename is {filename} with star mode {star_mode}")
     time_offset = get_time_offset(star_mode)
     dump = f"DD{get_dump_num(filename)}"
     fname = '/'.join([dump, dump]).encode()

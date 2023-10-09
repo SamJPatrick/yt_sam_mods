@@ -19,16 +19,17 @@ from unyt import Myr, yr, pc
 
 
 NUM_RAYS = 20
-FILT_WINDOW = 13
+FILT_WINDOW = 11
 
 INDIR = "Sobolev/Ray_profiles"
 OUTDIR = "Sobolev/Bary_vs_dm"
 
 DATASET_NUMS = [98, 100, 110, 120]
 #DATASET_NUMS = [99, 100, 101, 103, 106]
+DATASET_NUMS = [137, 139, 141, 145, 151]
 COLORS = ['green', 'blue', 'orange', 'magenta', 'cyan', 'brown']
 
-DENS_CUTOFF = 1e-28
+DENS_CUTOFF = 1e-27
 
 
 try :
@@ -68,7 +69,7 @@ for i, dataset in enumerate(datasets):
     ax2.plot(distances, bary_densities, label="baryonic", color='red')
 
     ax2.set_title(star_type.upper())
-    ax2.set_ylabel(r"$\rho (g ~cm^{-3})$")
+    ax2.set_ylabel(r"$\rho ~(g ~cm^{-3})$")
     ax2.set_xlabel("Radius (pc)")
     ax2.set_xlim(0.0, 400.0)
     ax2.set_yscale('log')
@@ -79,7 +80,7 @@ for i, dataset in enumerate(datasets):
     ax1.plot(distances, sig.medfilt(dm_densities, kernel_size= FILT_WINDOW), color= COLORS[i], linestyle='--')
     ax1.plot(distances, bary_densities, color= COLORS[i], linestyle='-', label=f'{time:.2f}')
 
-ax1.set_ylabel(r"$\rho (g ~cm^{-3})$")
+ax1.set_ylabel(r"$\rho ~(g ~cm^{-3})$")
 ax1.set_xlabel("Radius (pc)")
 ax1.set_xlim(0.0, 400.0)
 ax1.legend(loc='upper right')
