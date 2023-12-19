@@ -9,61 +9,46 @@ import matplotlib.pyplot as plt
 
 
 
-CLUMP_FILE_NAME = "DD0295_clump_0.h5"
-PLOT_NAME = "clump_correlations_dens.png"
-
-PLOT_FIELDS = {'max_metallicity': False, 'mean_metallicity': False, 'min_temperature': False, 'mean_temperature': False, \
-               'max_number_density': True, 'mean_number_density': True, 'stability': True, 'cell_mass': True, 'volume': True}
-
-#MATRIX_FIELDS = ['mean_temperature', 'max_temperature', 'min_temperature', 'volume']
-#MATRIX_FIELDS = ['mean_metallicity', 'max_metallicity', 'min_metallicity', 'cell_mass']
-MATRIX_FIELDS = ['mean_number_density', 'max_number_density', 'min_number_density', 'cell_mass']
-
-#MATRIX_FIELDS = ['mean_number_density', 'mean_metallicity', 'mean_temperature']
-#MATRIX_FIELDS = ['max_number_density', 'max_metallicity', 'min_temperature']
-#MATRIX_FIELDS = ['distance', 'alpha', 'ratio', 'volume', 'a_max']
-#MATRIX_FIELDS = ['distance', 'alpha', 'ratio', 'volume', 'cell_mass', 'stability', 'max_metallicity', \
-#                 'mean_metallicity', 'min_metallicity', 'max_temperature', 'mean_temperature', 'min_temperature', \
-#                 'max_number_density', 'mean_number_density', 'min_number_density']
-
+CLUMP_FILE_NAME = "Clumps/DD0295_clump_info.h5"
+PLOT_NAME = "clump_correlations.png"
+#MATRIX_FIELDS = ['distance', 'alpha', 'ratio', 'volume', 'cell_mass', 'jeans_mass',
+#                 'max_metallicity', 'min_temperature', 'mean_number_density']
+MATRIX_FIELDS = ['volume', 'min_temperature', 'mean_temperature', 'max_temperature']
+#PLOT_FIELDS = ['mean_temperature', 'min_temperature', 'max_temperature']
+PLOT_FIELDS = ['mean_number_density', 'min_number_density', 'max_number_density']
 N_BINS_LOG = 20
 N_BINS_LIN = 10
 
+ERR_TOL = 0.2
+TEMP_THRESH = unyt_quantity(200.0, 'K')
+CMB_TOL = unyt_quantity(10.0, 'K')
+VOL_THRESH = unyt_quantity(1e-6, 'pc**3')
+CMB_Z0 = unyt_quantity(2.725, 'K')
 
 
 df = yt.load(CLUMP_FILE_NAME)
+temp_cmb = CMB_Z0 * (df.current_redshift + 1.0)
 order_mask = [np.argwhere(df.data[('clump', 'cell_mass')] == mass).item() \
               for mass in sorted(df.data[('clump', 'cell_mass')])]
-sanity_mask = (df.data[('clump', 'mean_temperature')][order_mask].to('K').value < 40) & \
-    (df.data[('clump', 'max_number_density')][order_mask] < 10 * df.data[('clump', 'mean_number_density')][order_mask]) & \
-    (df.data[('clump', 'volume')][order_mask].to('pc**3').value > 1e-6)
+sanity_mask = (df.data[('clump', 'volume')][order_mask] > VOL_THRESH) & \
+    (df.data[('clump', 'max_number_density')][order_mask] < 10 * (1 + ERR_TOL) * df.data[('clump', 'mean_number_density')][order_mask]) & \
+    (df.data[('clump', 'mean_temperature')][order_mask] < TEMP_THRESH) & \
+    (df.data[('clump', 'min_temperature')][order_mask] < temp_cmb + CMB_TOL)
 duff_frac = (len(np.nonzero(sanity_mask)) / len(sanity_mask)) * 100
 print(f"Percentage of clumps eliminated is {duff_frac:.2f}%")
 
-temp_diff = df.data[('clump', 'max_temperature')][order_mask][sanity_mask] - \
-    df.data[('clump', 'min_temperature')][order_mask][sanity_mask]
-stability = df.data[('clump', 'jeans_mass')][order_mask][sanity_mask] / \
-    df.data[('clump', 'cell_mass')][order_mask][sanity_mask]
 coms = df.data[('clump', 'com')][order_mask][sanity_mask]
 mean_com = unyt_array([np.mean(coord) for coord in list(zip(*coms.value.tolist()))], 'pc')
 distance = [np.linalg.norm(unyt_array(com, 'pc') - mean_com) for com in coms]
 
 corr_matrix = np.zeros((len(MATRIX_FIELDS), len(MATRIX_FIELDS)))
 for i, field in enumerate(MATRIX_FIELDS):
-    if (field == 'temp_diff'):
-        arr1 = temp_diff
-    elif (field == 'stability'):
-        arr1 = stability
-    elif (field == 'distance'):
+    if (field == 'distance'):
         arr1 = distance
     else :
         arr1 = df.data[('clump', field)][order_mask][sanity_mask]
     for j, field in enumerate(MATRIX_FIELDS):
-        if (field == 'temp_diff'):
-            arr2 = temp_diff
-        elif (field == 'stability'):
-            arr2 = stability
-        elif (field == 'distance'):
+        if (field == 'distance'):
             arr2 = distance
         else :
             arr2 = df.data[('clump', field)][order_mask][sanity_mask]
@@ -79,77 +64,41 @@ plt.yticks(np.arange(len(MATRIX_FIELDS)), MATRIX_FIELDS, fontsize= 5)
 plt.savefig(PLOT_NAME)
 plt.close()
 
-'''
-x_axis_metal = None
-x_axis_temps = None
-x_axis_number = None
-for field in PLOT_FIELDS.keys():
+n_bins = N_BINS_LIN
+sep_data  = transpose_unyt(sorted(df.data[('clump', PLOT_FIELDS[0])][order_mask][sanity_mask]))
+sep_values = np.hstack([unyt_quantity(0.0, sep_data.units), np.linspace(sep_data[0], sep_data[-1], n_bins + 1),
+                        np.max(transpose_unyt(df.data[('clump', PLOT_FIELDS[2])]))]) * unyt_quantity(1.0, sep_data.units)
+print(sep_values)
+if ('temperature' in PLOT_FIELDS[0]):
+    plt_cmb = (temp_cmb - sep_data[0]) * (n_bins / (sep_data[-1] - sep_data[0])) + 1
+n_clumps_max = 0
+n_clumps = np.zeros((3, n_bins + 3), dtype=int)
 
-    if (field == 'stability'):
-        data = transpose_unyt(sorted(stability[order_mask][sanity_mask]))
-    elif (field == 'temp_diff'):
-        data = transpose_unyt(sorted(temp_diff[order_mask][sanity_mask]))
-    else :
-        data  = transpose_unyt(sorted(df.data[('clump', field)][order_mask][sanity_mask]))
-
-    if (PLOT_FIELDS[field]):
-        n_bins = N_BINS_LOG
-    else :
-        n_bins = N_BINS_LIN
-    if (PLOT_FIELDS[field]):
-        x_axis = unyt_array(np.logspace(np.log10(data[0]), np.log10(data[-1]), n_bins), \
-                            data.units)
-    else :
-        x_axis = np.linspace(data[0], data[-1], n_bins)
-        
-    if ('temperature' in field):
-        if (x_axis_temps is None):
-            x_axis_temps = x_axis
-        x_axis = x_axis_temps   
-    if ('metal' in field):
-        if (x_axis_metal is None):
-            x_axis_metal = x_axis
-        x_axis = x_axis_metal
-    if ('number' in field):
-        if (x_axis_number is None):
-            x_axis_number = x_axis
-        x_axis = x_axis_number
-        
-    n_clumps = np.zeros(n_bins)
+for i, field in enumerate(PLOT_FIELDS):
+    data  = transpose_unyt(sorted(df.data[('clump', field)][order_mask][sanity_mask]))
     for datum in data:
-        for i in range (n_bins):
-            if (i == (n_bins - 1)):
-                n_clumps[-1] +=1
-                break
-            if (datum >= x_axis[i] and datum <= x_axis[i+1]):
-                n_clumps[i] += 1
+        for j in range (n_bins + 3):
+            if (datum > sep_values[j] and datum <= sep_values[j+1]):
+                n_clumps[i][j] += 1
+                if (n_clumps[i][j] > n_clumps_max):
+                    n_clumps_max = n_clumps[i][j]
                 break
 
+for i, field in enumerate(PLOT_FIELDS):
     plt.figure()
-    barlist = plt.bar(np.arange(n_bins), n_clumps, width=1.0, align='edge')
-    barlist[np.argmax(n_clumps)].set_color('red')
-    if ('metal' in field or PLOT_FIELDS[field]):
-        plt.xticks(np.arange(n_bins), [f'{x:.2E}' for x in x_axis.value], fontsize=5, rotation='vertical')
-    elif ('temperature' in field):
-        plt.xticks(np.arange(n_bins), [f'{x:.1f}' for x in x_axis.value], fontsize=7, rotation=30)
+    barlist = plt.bar(np.arange(n_bins + 3), n_clumps[i], width=1.0, align='edge')
+    barlist[np.argmax(n_clumps[i])].set_color('red')
+    val_median = np.median(df.data[('clump', PLOT_FIELDS[i])])
+    if (val_median < 1.0 or (sep_data[-1] - sep_data[0]) > 100.0):
+        plt.xticks(np.arange(n_bins + 3), [f'{num:.1e}' for num in sep_values.value], rotation=20, fontsize=8)
     else :
-        plt.xticks(np.arange(n_bins), x_axis.value, fontsize=7)
-    if (('temperature' in field) or ('metal' in field)):
-        plt.ylim(0, 15)
-    elif ('density' in field):
-        plt.ylim(0, 20)
-    plt.xlabel(x_axis.units, horizontalalignment='center', y=1.0)
+        plt.xticks(np.arange(n_bins + 3), [f'{num:.0f}' for num in sep_values.value])
+    plt.xlabel(sep_values.units, horizontalalignment='center', y=1.0)
     plt.ylabel("N")
-    #print(field)
-    #print(x_axis)
-    #print(n_clumps)
-    if (PLOT_FIELDS[field]):
-    #    x_ave = np.exp(np.average(np.log(x_axis), weights= n_clumps)) * (N_BINS/ np.log10(x_axis[-1])) - 1
-    #    print(x_ave)
-    #    plt.axvline(x= x_ave, color= 'green')
-        pass
-    else :
-        plt.axvline(x= np.average(x_axis, weights= n_clumps) * (n_bins/x_axis[-1]) - 1, color='red')
+    plt.ylim(0, (n_clumps_max // 5) * 5 + 5)
+    plt_median = (val_median - sep_data[0]) * (n_bins / (sep_data[-1] - sep_data[0])) + 1
+    plt.axvline(x= plt_median, color='red')
+    if ('temperature' in field):
+        plt.axvline(x= plt_cmb, color='green', linestyle='--')
     plt.savefig(f"clump_{field}.png")
     plt.close()
-'''

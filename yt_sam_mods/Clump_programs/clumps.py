@@ -23,7 +23,6 @@ CLUMP_STEP = 5.0
 
 OUTPUT_DIR = "Clumps"
 PROJ_SUBDIR = "Projections"
-[('gas', 'number_density'), ('gas', 'temperature')]
 
 
 CLUMPING_FIELD = ('gas', 'density')
@@ -37,16 +36,15 @@ if __name__ == "__main__":
     
     data_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo"
     tree_path = "merger_trees/target_halos/target_halos.h5"
-
     sim_path = "DD0295/DD0295"
+    
     a = ytree.load(os.path.join(data_dir, tree_path))
     ds = yt.load(os.path.join(data_dir, sim_path))
     add_p2p_fields(ds)
 
     center = ds.arr(a[0]["icom_gas2_position"], 'code_length')
     sp0 = ds.sphere(center, RECENTER_RADIUS)
-    loc = transpose_unyt(sp0.quantities.max_location(("gas", "density"))[1:])
-    new_center = ds.arr(loc)
+    new_center = ds.arr(transpose_unyt(sp0.quantities.max_location(("gas", "density"))[1:]))
     sp = ds.sphere(new_center, SEARCH_RADIUS)
     del sp0
     
@@ -63,6 +61,7 @@ if __name__ == "__main__":
     fn = master_clump.save_as_dataset(filename=os.path.join(OUTPUT_DIR, f'{str(ds)_clump_info.h5}'), fields=["density"])
     leaf_clumps = master_clump.leaves
 
+    '''
     pdir = os.path.join(OUTPUT_DIR, PROJ_SUBDIR)
     units = 'pc'
     dx = ds.index.get_smallest_dx()
@@ -81,3 +80,4 @@ if __name__ == "__main__":
             p.set_cmap(('gas', 'number_density'), "turbo")
             p.annotate_clumps(leaf_clumps)
             p.save(os.path.join(pdir, "%03d" % i))
+    '''
