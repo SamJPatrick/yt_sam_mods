@@ -85,6 +85,41 @@ def _max_temperature(clump):
     return "Max temperature: %.1f K", max_temp
 add_clump_info("max_temperature", _max_temperature)
 
+def _min_H2_fraction(clump):
+    min_fraction = clump.data["gas", "H2_p0_fraction"].min()
+    return "Min H2 fraction: %.6e", min_fraction
+add_clump_info("min_H2_fraction", _min_H2_fraction)
+
+def _mean_H2_fraction(clump):
+    mean_fraction = sum(clump.data["gas", "H2_p0_fraction"] * clump.data["gas", "cell_mass"]) / \
+        sum(clump.data["gas", "cell_mass"])
+    return "Mean H2 fraction: %.6e", mean_fraction
+add_clump_info("mean_H2_fraction", _mean_H2_fraction)
+
+def _max_H2_fraction(clump):
+    max_fraction = clump.data["gas", "H2_p0_fraction"].max()
+    return "Max H2 fraction: %.6e", max_fraction
+add_clump_info("max_H2_fraction", _max_H2_fraction)
+
+def _min_cooling_rate(clump):
+    min_rate = clump.data["gas", "cooling_rate"].min()
+    return "Min cooling rate: %.6e", min_rate
+add_clump_info("min_cooling_rate", _min_cooling_rate)
+
+def _mean_cooling_rate(clump):
+    cool_rate = sum(clump.data["gas", "cooling_rate"] * clump.data["gas", "cooling_rate"]) / \
+        sum(clump.data["gas", "cooling_rate"])
+    return "Cooling rate: %.6e", cool_rate
+add_clump_info("mean_cooling_rate", _mean_cooling_rate)
+
+def _max_cooling_rate(clump):
+    max_rate = clump.data["gas", "cooling_rate"].max()
+    return "Max cooling rate: %.6e", max_rate
+add_clump_info("max_cooling_rate", _max_cooling_rate)
+
+
+
+
 def _jeans_mass(clump):
     temperature = clump.data.quantities.weighted_average_quantity(
         ("gas", "temperature"), ("gas", "cell_mass"))
@@ -97,8 +132,16 @@ def _jeans_mass(clump):
     return "Jeans mass: %.6e Msun.", u.in_units("Msun")
 add_clump_info("jeans_mass", _jeans_mass)
 
-
-
+def _fragmentation_instability(clump):
+    mass = clump.data.quantities.total_mass()[0].in_units('Msun')
+    volume = clump.data.quantities.total_quantity(('gas', 'cell_volume')).in_units('pc**3')
+    rho_ave = mass / volume
+    t_ff = np.sqrt(3.0 * np.pi / (16.0 * rho_ave * G))
+    t_cool = sum(clump.data["gas", "cooling_time"] * clump.data["gas", "cell_mass"]) / \
+        sum(clump.data["gas", "cell_mass"])
+    frag_instab = t_ff / t_cool
+    return "Fragmentaion instability: %.6e", frag_instab
+add_clump_info("fragmentation_instability", _fragmentation_instability)
 
 def _amax(clump):
 

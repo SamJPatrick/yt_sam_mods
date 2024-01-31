@@ -141,6 +141,9 @@ def _cooling_ratio(field, data):
 def _cooling_dynamical_ratio(field, data):
     return data[('gas', 'cooling_time')] / data[('gas', 'dynamical_time')]
 
+def _cooling_rate(field, data):
+    return data[('gas', 'internal_energy')] / data[('gas', 'cooling_time')]
+
 def _vortical_dynamical_ratio(field, data):
     return data[('gas', 'vortical_time')] / data[('gas', 'dynamical_time')]
 
@@ -253,6 +256,9 @@ def add_p2p_fields(ds):
     add_p2p_field(ds, ('gas', 'cooling_dynamical_ratio'),
                   function=_cooling_dynamical_ratio,
                   units='', sampling_type='cell')
+    add_p2p_field(ds, ('gas', 'cooling_rate'),
+                  function=_cooling_rate,
+                  units='erg/s', sampling_type='cell')
     add_p2p_field(ds, ('gas', 'vortical_dynamical_ratio'),
                   function=_vortical_dynamical_ratio,
                   units='', sampling_type='cell')

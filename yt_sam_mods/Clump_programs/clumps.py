@@ -26,9 +26,13 @@ PROJ_SUBDIR = "Projections"
 
 
 CLUMPING_FIELD = ('gas', 'density')
-INFO_FIELDS = ["min_number_density", "mean_number_density", "max_number_density", "min_metallicity", "mean_metallicity", "max_metallicity", \
-               "min_temperature", "mean_temperature", "max_temperature", "jeans_mass", "volume", "mass", "metal_mass", "com", "a_max", \
-               "ratio", "alpha"]
+INFO_FIELDS = ["min_number_density", "mean_number_density", "max_number_density",
+               "min_metallicity", "mean_metallicity", "max_metallicity",
+               "min_temperature", "mean_temperature", "max_temperature",
+               "min_H2_fraction", "mean_H2_fraction", "max_H2_fraction",
+               "volume", "mass", "metal_mass",
+               "com", "a_max", "jeans_mass", "ratio", "alpha",
+               "fragmentation_instability", "mean_cooling_rate"]
 PLOT_FIELDS = [('gas', 'number_density'), ('gas', 'temperature')]
 
 
@@ -58,8 +62,7 @@ if __name__ == "__main__":
     for field in INFO_FIELDS:
         master_clump.add_info_item(field)
     find_clumps(master_clump, c_min, c_max, CLUMP_STEP)
-    fn = master_clump.save_as_dataset(filename=os.path.join(OUTPUT_DIR, f'{str(ds)_clump_info.h5}'), fields=["density"])
-    leaf_clumps = master_clump.leaves
+    master_clump.save_as_dataset(filename=os.path.join(OUTPUT_DIR, f'{str(ds)}_clump_info.h5'), fields=["density"])
 
     '''
     pdir = os.path.join(OUTPUT_DIR, PROJ_SUBDIR)

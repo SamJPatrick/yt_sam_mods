@@ -276,15 +276,15 @@ if __name__ == "__main__":
 
     ap.add_operation(profile_rays, outdir= OUTDIR_PROF)
     ap.add_operation(plot_rays, star_type, outdir= OUTDIR_PLOT, color= RAY_COLOR)
-    #ap.add_operation(ray_projections, star_type, outdir= OUTDIR_PROJ, num_slices= None)
+    ap.add_operation(ray_projections, star_type, outdir= OUTDIR_PROJ, num_slices= None)
 
     ap.add_operation(delattrs, ["sphere", "ds"], always_do=True)
     ap.add_operation(garbage_collect, 60, always_do=True)
 
     tree = a[0]
-    N_COMPLETED = 50
-    tree_mod = list(tree['prog'])[N_COMPLETED:]
-    for node in ytree.parallel_trees(tree_mod):
-        ap.process_target(node)
-    #for node in ytree.parallel_tree_nodes(tree, group="prog"):
+    #N_COMPLETED = 50
+    #tree_mod = list(tree['prog'])[N_COMPLETED:]
+    #for node in ytree.parallel_trees(tree_mod):
     #    ap.process_target(node)
+    for node in ytree.parallel_tree_nodes(tree, group="prog"):
+        ap.process_target(node)
