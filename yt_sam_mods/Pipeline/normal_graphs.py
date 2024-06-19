@@ -17,8 +17,8 @@ from unyt import Myr, yr, pc
 RADIUS_FILE = "star_None_radius.h5"
 SIMULATION_FILE = "simulation.h5"
 OUTDIR = "Profiles/Normal_graphs"
-FIELDS = ['density', 'temperature', 'velocity_magnitude', 'sound_speed']
-
+#FIELDS = ['density', 'temperature', 'velocity_magnitude', 'sound_speed']
+FIELDS = ['metallicity3']
 
 try :
     star_type = sys.argv[1]

@@ -1,26 +1,22 @@
 import numpy as np
+import sys
 import os
 import yt
 import h5py
-yt.enable_parallelism()
+#yt.enable_parallelism()
 import ytree
 
-from yt.frontends.enzo.data_structures import EnzoDataset
-from yt.data_objects.level_sets.api import Clump, find_clumps, add_validator
-
 from ytree.analysis import AnalysisPipeline
-
-from yt.extensions.sam_mods.misc import return_sphere, align_sphere, transpose_unyt
+from yt.extensions.sam_mods.tree_analysis_operations import *
+from yt.extensions.sam_mods.misc import return_sphere, align_sphere
 from yt.extensions.sam_mods.profiles import my_profile
+from yt.extensions.sam_mods.unyt_funcs import transpose_unyt
 from yt.extensions.sam_mods.plots import *
-from yt.extensions.sam_mods.tree_analysis_operations import yt_dataset, garbage_collect, delattrs
 from yt.extensions.sam_mods import add_p2p_fields
 
 from yt import derived_field
 from unyt import unyt_quantity, unyt_array
 from unyt import G, Msun, kb, mh, pc
-
-
 
 
 TINY_RADIUS = 1e-3
@@ -43,7 +39,7 @@ def metallicity_distribution(node, outdir='.', nbins=120):
     plt.save(name= fpath, suffix= ".png")
     
 
-def metal_phase_plots(node, outdir='.'):
+def metal_phase_plots(node, star_mode, outdir='.'):
 
     ds = node.ds
     sphere = node.sphere
@@ -54,7 +50,7 @@ def metal_phase_plots(node, outdir='.'):
     plt.set_ylim(1e-29, 1e-15)
     plt.set_unit(('gas', 'cell_mass'), 'Msun')
     plt.set_zlim(('gas', 'cell_mass'), 1e-2, 1e2)
-    decorate_plot(node, plt)
+    decorate_plot(node, plt, star_mode)
     fpath = os.path.join(os.getcwd(), outdir, f"{str(ds)}_metallicity_density_mass.png")
     plt.save(name= fpath)
     
@@ -65,7 +61,7 @@ def metal_phase_plots(node, outdir='.'):
     plt.set_ylim(1e-7, 1e0)
     plt.set_unit(('gas', 'density'), 'g * cm**(-3)')
     plt.set_zlim(('gas', 'density'), 1e-27, 1e-15)
-    decorate_plot(node, plt)
+    decorate_plot(node, plt, star_mode)
     fpath = os.path.join(os.getcwd(), outdir, f"{str(ds)}_radius_metallicity_density.png")
     plt.save(name= fpath)
 
@@ -74,7 +70,7 @@ def metal_phase_plots(node, outdir='.'):
     plt.set_ylim(1e-29, 1e-15)
     plt.set_zlim(('gas', 'cooling_ratio'), 1e-2, 1e3)
     plt.set_log(('gas', 'cooling_ratio'), True)
-    decorate_plot(node, plt)
+    decorate_plot(node, plt, star_mode)
     fpath = os.path.join(os.getcwd(), outdir, f"{str(ds)}_metallicity_density_ratio.png")
     plt.save(name= fpath)
     
@@ -83,17 +79,32 @@ def metal_phase_plots(node, outdir='.'):
     
 if __name__ == "__main__":
 
-    #output_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo/minihalo_analysis"
-    #sim_path = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo/simulation.h5"
-    #data_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo"
-    #tree_path= "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo/merger_trees/target_halos/target_halos.h5"
+    try:
+        star_mode = sys.argv[1]
+    except IndexError:
+        print("Error, 'star_mode' argument required")
+        quit()
 
-    output_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/cc_512_collapse_solar_dust/minihalo_analysis"
-    sim_path = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/cc_512_collapse_solar_dust/simulation.h5"
-    data_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/cc_512_collapse_solar_dust"
-    tree_path= "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/cc_512_collapse_solar_dust/merger_trees/target_halos/target_halos.h5"
+    if (star_mode == 'pisn' or star_mode == 'PISN'):
+        output_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo/minihalo_analysis"
+        sim_path = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo/simulation.h5"
+        data_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo"
+        tree_path= "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo/merger_trees/target_halos/target_halos.h5"
+    elif (star_mode == 'hn' or star_mode == 'HN'):
+        output_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/hyper_512_collapse_solar_dust/minihalo_analysis"
+        sim_path = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/hyper_512_collapse_solar_dust/simulation.h5"
+        data_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/hyper_512_collapse_solar_dust"
+        tree_path= "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/hyper_512_collapse_solar_dust/merger_trees/target_halos/target_halos.h5"
+    elif (star_mode == 'ccsn' or star_mode == 'CCSN'):
+        output_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/cc_512_collapse_solar_dust/minihalo_analysis"
+        sim_path = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/cc_512_collapse_solar_dust/simulation.h5"
+        data_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/cc_512_collapse_solar_dust"
+        tree_path= "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/cc_512_collapse_solar_dust/merger_trees/target_halos/target_halos.h5"
+    else :
+        print("Error, 'star_mode' not recognised")
+        quit()
 
-    es = yt.load(sim_path)
+    #es = yt.load(sim_path)
     a = ytree.load(tree_path)
     if "icom_gas2_position_x" in a.field_list:
         a.add_vector_field("icom_gas2_position")
@@ -104,7 +115,7 @@ if __name__ == "__main__":
     ap.add_operation(return_sphere)
     ap.add_operation(align_sphere)
     
-    ap.add_operation(metal_phase_plots, outdir= 'Phase_plots')
+    ap.add_operation(metal_phase_plots, star_mode, outdir= f"Phase_plots_{star_mode}")
     
     ap.add_operation(delattrs, ["sphere", "ds"], always_do=True)
     ap.add_operation(garbage_collect, 60, always_do=True)

@@ -104,18 +104,18 @@ add_clump_info("max_H2_fraction", _max_H2_fraction)
 def _min_cooling_rate(clump):
     min_rate = clump.data["gas", "cooling_rate"].min()
     return "Min cooling rate: %.6e", min_rate
-add_clump_info("min_cooling_rate", _min_cooling_rate)
+#add_clump_info("min_cooling_rate", _min_cooling_rate)
 
 def _mean_cooling_rate(clump):
     cool_rate = sum(clump.data["gas", "cooling_rate"] * clump.data["gas", "cooling_rate"]) / \
         sum(clump.data["gas", "cooling_rate"])
     return "Cooling rate: %.6e", cool_rate
-add_clump_info("mean_cooling_rate", _mean_cooling_rate)
+#add_clump_info("mean_cooling_rate", _mean_cooling_rate)
 
 def _max_cooling_rate(clump):
     max_rate = clump.data["gas", "cooling_rate"].max()
     return "Max cooling rate: %.6e", max_rate
-add_clump_info("max_cooling_rate", _max_cooling_rate)
+#add_clump_info("max_cooling_rate", _max_cooling_rate)
 
 
 
@@ -170,9 +170,40 @@ def _amax(clump):
     
     eigvalues, eigvectors = np.linalg.eig(I)
     a_max = max(clump.data[('gas', 'dx')].min().to('pc'), unyt_quantity(np.sqrt(max(eigvalues)), 'pc'))
-    return ("Clump characteristic length scale: %.5f pc", a_max)
+    return "Clump characteristic length scale: %.5f pc", a_max
 add_clump_info("a_max", _amax)
 
+
+def _alpha_metal(clump):
+    volume = clump.info['volume'][1]
+    r_char = ((3 * volume) / (4 * np.pi))**(1/3)
+    div2 = clump.data.quantities.total_quantity(('gas', 'metal_laplacian'))
+    max_metallicity = clump.data.quantities.extrema(('gas', 'metallicity3'))[1]
+    alpha_metal = div2 / (max_metallicity * r_char)
+    return "Clump dimensionless metallicity gradient over boundary: %.5f", alpha_metal
+add_clump_info("alpha_metal", _alpha_metal)
+
+
+def _alpha_density(clump):
+    volume = clump.info['volume'][1]
+    r_char = ((3 * volume) / (4 * np.pi))**(1/3)
+    div2 = clump.data.quantities.total_quantity(('gas', 'density_laplacian'))
+    max_density = clump.data.quantities.extrema(('gas', 'density'))[1]
+    alpha_density = div2  / (max_density * r_char)
+    return "Clump dimensionless metallicity gradient over boundary: %.5f", alpha_density
+add_clump_info("alpha_density", _alpha_density)
+
+
+def _r_factor(clump):
+    a_max = clump.info['a_max'][1]
+    volume = clump.info['volume'][1]
+    r_char = ((3 * volume) / (4 * np.pi))**(1/3)
+    r_factor = a_max / r_char
+    return "Clump crinkliness: %.5f", r_factor
+add_clump_info("r_factor", _r_factor)
+
+
+'''
 def _ratio(clump):
 
     ds = clump.data.ds
@@ -198,10 +229,4 @@ def _ratio(clump):
     ratio = (clump_volume / (clump_area * a_max)) * (3 * np.sqrt(2/5))
     return ("Clump volume to surface area ratio: %.5f", ratio)
 add_clump_info("ratio", _ratio)
-
-def _alpha(clump):
-    a_max = clump.info['a_max'][1]
-    div2 = clump.data.quantities.total_quantity(('gas', 'metal_laplacian'))
-    alpha = div2 / a_max
-    return ("Clump dimensionless metallicity gradient over boundary: %.3e", alpha)
-add_clump_info("alpha", _alpha)
+'''
