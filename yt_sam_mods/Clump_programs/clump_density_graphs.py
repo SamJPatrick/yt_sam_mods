@@ -26,7 +26,7 @@ FIELDS_TIME = ['free-fall', 'sound-crossing']
 
 prof_files = glob.glob("*_clump_density_profiles.h5")
 num_stars = len(prof_files)
-my_fig = GridFigure(2, num_stars, figsize=(11, 9),
+my_fig = GridFigure(2, num_stars, figsize=(6 * num_stars, 9),
                     left_buffer=0.08, right_buffer=0.08,
                     bottom_buffer=0.06, top_buffer=0.02,
                     horizontal_buffer=0.08, vertical_buffer=0.02)
@@ -40,15 +40,15 @@ for i, prof_file in enumerate(prof_files):
     
     for j, field in enumerate(FIELDS_TIME):
         data = unyt_array(list(df[f'{field}/array_data']), 'Myr')
-        my_fig[i*2].plot(number_densities, data, color= COLORS[j], label=FIELDS_TIME[j])
-    my_fig[i*2].set_yscale('log')
-    my_fig[i*2].yaxis.set_label_text(f"Timescale {star_type} (Myr)")
-    my_fig[i*2].set_ylim(1e-4, 1e3)
-    my_fig[i*2].yaxis.set_ticks(np.logspace(-4, 3, 8), minor=True)
-    my_fig[i*2].axvline(x= N_H2, color='black', linestyle='--')
-    my_fig[i*2].legend(loc='upper right')
+        my_fig[i].plot(number_densities, data, color= COLORS[j], label=FIELDS_TIME[j])
+    my_fig[i].set_yscale('log')
+    my_fig[i].yaxis.set_label_text(f"Timescale {star_type} (Myr)")
+    my_fig[i].set_ylim(1e-4, 1e3)
+    my_fig[i].yaxis.set_ticks(np.logspace(-4, 3, 8), minor=True)
+    my_fig[i].axvline(x= N_H2, color='black', linestyle='--')
+    my_fig[i].legend(loc='upper right')
 
-    my_axes = [my_fig[i*2+1], my_fig[i*2+1].twinx()]
+    my_axes = [my_fig[i+num_stars], my_fig[i+num_stars].twinx()]
     for j, field in enumerate(list(FIELDS_ENC.keys())):
         data = unyt_array(list(df[f'{field}/array_data']), FIELDS_ENC[field])
         my_axes[j].plot(number_densities, data, color= COLORS[j], label= list(FIELDS_ENC.keys())[j])

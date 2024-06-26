@@ -149,9 +149,11 @@ def single_image(panel, output_file, fig=None, figsize=(8, 8), dpi=200, fontsize
         for tick_label in tick_labels:
             tick_label.set_color(text_color)
             tick_label.set_size(fontsize)
-        ticks = panel["axes"].xaxis.get_ticks()
-        for tick in ticks:
-            tick.set_color(text_color)
+        #ticks = panel["axes"].xaxis.get_ticks()
+        ticks = panel["axes"].get_xticks()
+        #for tick in ticks:
+        panel['axes'].tick_params(axis= 'x', colors= text_color)
+            #tick.set_color(text_color)
         if x_label_clip is not None:
             if x_label_clip == 'left' or x_label_clip == 'both':
                 tick_labels[0].set_visible(False)
@@ -176,9 +178,11 @@ def single_image(panel, output_file, fig=None, figsize=(8, 8), dpi=200, fontsize
         for tick_label in tick_labels:
             tick_label.set_color(text_color)
             tick_label.set_size(fontsize)
-        ticks = panel["axes"].xaxis.get_ticks()
-        for tick in ticks:
-            tick.set_color(text_color)
+        #ticks = panel["axes"].xaxis.get_ticks()
+        ticks = panel["axes"].get_xticks()
+        #for tick in ticks:
+        panel['axes'].tick_params(axis= 'y', colors= text_color)
+            #tick.set_color(text_color)
         if y_label_clip is not None:
             if y_label_clip == 'bottom' or y_label_clip == 'both':
                 tick_labels[0].set_visible(False)
@@ -463,9 +467,11 @@ def single_image(panel, output_file, fig=None, figsize=(8, 8), dpi=200, fontsize
                 for ticklabel in panel['cbar'].ax.get_xticklabels(): 
                     ticklabel.set_color(text_color)
                     ticklabel.set_size(fontsize)
-                ticks = panel["cbar"].ax.get_ticks()
-                for tick in ticks:
-                    tick.set_color(text_color)
+                #ticks = panel["cbar"].ax.get_ticks()
+                #for tick in ticks:
+                #    tick.set_color(text_color)
+                # panel["cbar"].set_ticks(color= text_color)
+                panel["cbar"].ax.yaxis.set_tick_params(color= text_color)
                 if log_field == 'double':
                     for ticklabel in panel['negative_cbar'].ax.get_xticklabels(): 
                         ticklabel.set_color(text_color)
@@ -574,7 +580,7 @@ def multi_image(panels, output_file, n_columns=2, fig=None, figsize=(8, 8),
                 tick_range=None, tick_label=None, tick_label_format='%d', n_ticks=None, 
                 top_buffer=0.15, bottom_buffer=0.15, 
                 left_buffer=0.15, right_buffer=0.15,
-                cbar_orientation='vertical', fig_text=None, 
+                cbar_orientation='vertical', show_cbar_label= True, fig_text=None, 
                 bg_color="white", text_color="black", **kwargs):
 
     n_rows = np.int(np.ceil(len(panels) / n_columns))
@@ -606,13 +612,13 @@ def multi_image(panels, output_file, n_columns=2, fig=None, figsize=(8, 8),
         bottom_side = top_side - panel_width
 
         show_cbar = True
-        show_cbar_label = True
+        #show_cbar_label = True
         cbar_position = None
         if panel.get("hide_cbar"):
             show_cbar = False
         else:
             if cbar_orientation == 'vertical':
-                show_cbar_label = True
+                #show_cbar_label = True
                 y_label = None
                 y_label_position = None
                 if my_column == 0:

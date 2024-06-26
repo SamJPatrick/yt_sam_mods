@@ -26,19 +26,24 @@ OUTDIR =  '.'
 POP3_POSITION = [0.53805048, 0.53802318, 0.52146589]
 BOXSIZE_PROJ = unyt_quantity(300, 'pc')
 #BOXSIZE_PROJ = unyt_quantity(2.0, 'kpc')
-DENSITY_LIMS = unyt_array([1e-27, 1e-21], 'g/cm**3')
 BOXSIZE_SLICE = unyt_quantity(1.0, 'kpc')
 #BOXSIZE_SLICE = unyt_quantity(2.0, 'kpc')
-TEMPERATURE_LIMS = unyt_array([1e1, 1e8], 'K')
+
+FIELDS_SLICE = ['density', 'temperature', 'metallicity3']
+FIELDS_PROJ = ['density', 'temperature', 'metallicity3']
+limit_dict = {'density': unyt_array([1e-27, 1e-21], 'g/cm**3'),
+              'temperature': unyt_array([1e1, 1e8], 'K'),
+              'metallicity3': unyt_array([1e-7, 1e0], 'Zsun')}
+cmap_dict = {'density': 'turbo', 'temperature': 'inferno', 'metallicity3': 'cool'}
 big_dict = {'ccsn': {'sim_dir': "cc_512_collapse_solar_dust",
-                     'dump_nums_slice': [102],
-                     'dump_nums_proj': [104]},
+                     'dump_nums_slice': [115],
+                     'dump_nums_proj': []},
             'hn' : {'sim_dir': "hyper_512_collapse_solar_dust",
-                    'dump_nums_slice': [],
+                    'dump_nums_slice': [161],
                     'dump_nums_proj': []},
             'pisn': {'sim_dir': "pisn_solo",
-                     'dump_nums_slice': [110],
-                     'dump_nums_proj': [130]}}
+                     'dump_nums_slice': [150],
+                     'dump_nums_proj': []}}
 
 
 
@@ -109,33 +114,32 @@ if __name__ == "__main__":
                      for dump_num in big_dict[star_type]['dump_nums_proj']]
         for dir_path in dir_paths:
             ds = yt.load(dir_path)
+            add_p2p_fields(ds)
             node = get_node(a[0], ds.current_time)
             #sphere = get_sphere(node, ds)
             sphere = ds.sphere(ds.arr(node['position'], 'unitary').to('pc'), ds.quan(node['virial_radius'], 'unitary').to('pc'))
             halo_center = sphere.center
-            p = yt.ProjectionPlot(ds, "x", [("gas", "density")], center= halo_center, width= BOXSIZE_PROJ, weight_field=("gas", "density"))
-            p.set_cmap('density', 'turbo')
-            p.set_axes_unit('pc')
-            p.set_zlim('density', *DENSITY_LIMS)
-            p.frb.save_as_dataset(filename= os.path.join(OUTDIR, f"{str(ds)}_density_proj_noicom.h5"))
-            #p = yt.ProjectionPlot(ds, "x", [("gas", "temperature")], center= halo_center, width= BOXSIZE_PROJ, weight_field=("gas", "density"))
-            #p.set_cmap('temperature', 'inferno')
-            #p.set_axes_unit('pc')
-            #p.set_zlim('temperature', *TEMPERATURE_LIMS)
-            #p.frb.save_as_dataset(filename= os.path.join(OUTDIR, f"{str(ds)}_temperature_proj.h5"))
+            for field in FIELDS_PROJ:
+                p = yt.ProjectionPlot(ds, "x", [("gas", "field")], center= halo_center, width= BOXSIZE_PROJ, weight_field=("gas", "density"))
+                p.set_cmap(field, cmap_dict[field])
+                p.set_axes_unit('pc')
+                p.set_zlim(field, *limit_dict[field])
+                p.frb.save_as_dataset(filename= os.path.join(OUTDIR, f"{str(ds)}_{field}_proj.h5"))
 
         dir_paths = [os.path.join(SIM_PATH, big_dict[star_type]['sim_dir'], f"DD{dump_num:04d}/DD{dump_num:04d}")
                      for dump_num in big_dict[star_type]['dump_nums_slice']]
         for dir_path in dir_paths:
             ds = yt.load(dir_path)
+            add_p2p_fields(ds)
             node = get_node(a[0], ds.current_time)
             #sphere = get_sphere(node, ds)
             sphere = ds.sphere(ds.arr(node['position'], 'unitary').to('pc'), ds.quan(node['virial_radius'], 'unitary').to('pc'))
             halo_center = sphere.center
             ray_center, ray_vec, north_vecs = get_ray(ds, halo_center)
-            p = yt.OffAxisSlicePlot(ds, north_vecs[1], [('gas', 'temperature')], center= ray_center,
-                                    width= ds.quan(BOXSIZE_SLICE.value, BOXSIZE_SLICE.units), north_vector= ray_vec)
-            p.set_cmap('temperature', 'inferno')
-            p.set_axes_unit('pc')
-            p.set_zlim('temperature', *TEMPERATURE_LIMS)
-            p.frb.save_as_dataset(filename= os.path.join(OUTDIR, f"{str(ds)}_temperature_slice_noicom.h5"))
+            for field in FIELDS_SLICE:
+                p = yt.OffAxisSlicePlot(ds, north_vecs[1], [('gas', field)], center= ray_center,
+                                        width= ds.quan(BOXSIZE_SLICE.value, BOXSIZE_SLICE.units), north_vector= ray_vec)
+                p.set_cmap(field, cmap_dict[field])
+                p.set_axes_unit('pc')
+                p.set_zlim(field, *limit_dict[field])
+                p.frb.save_as_dataset(filename= os.path.join(OUTDIR, f"{str(ds)}_{field}_slice.h5"))

@@ -19,19 +19,20 @@ from unyt import G, Msun, kb, mh, pc
 
 
 BIN_DENSITY = 20
-OUTDIR = "Profiles"
-UNIT_DICT = {('gas', 'number_density'): 'cm**(-3)', ('gas', 'temperature'): 'K', ('index', 'radius'): 'pc'}
+OUTDIR = "."
+#UNIT_DICT = {('gas', 'number_density'): 'cm**(-3)', ('gas', 'temperature'): 'K', ('index', 'radius'): 'pc'}
+UNIT_DICT = {('gas', 'number_density'): 'cm**(-3)', ('gas', 'temperature'): 'K'}
 
 
 def mass_weighted_profiles(node, outdir="."):
 
-    #bin_fields = [('gas', 'number_density'), ('gas', 'temperature')]
-    bin_fields = [('gas', 'number_density'), ('gas', 'temperature'), ('index', 'radius')]
+    bin_fields = [('gas', 'number_density'), ('gas', 'temperature')]
+    #bin_fields = [('gas', 'number_density'), ('gas', 'temperature'), ('index', 'radius')]
     profile_fields = [('gas', 'cell_mass')]
     weight_field = None
     profile = my_profile(node.sphere, bin_fields, profile_fields, units= UNIT_DICT,
                          weight_field=weight_field, accumulation=False, bin_density= BIN_DENSITY)
-    fn = os.path.join(outdir, f"{str(node.ds)}_profile_number_density_temperature_radius.h5")
+    fn = os.path.join(outdir, f"{str(node.ds)}_profile_number_density_temperature.h5")
     profile.save_as_dataset(filename=fn)
 
 
@@ -45,10 +46,15 @@ if __name__ == "__main__":
     #data_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/cc_512_collapse_solar_dust"
     #tree_path = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/cc_512_collapse_solar_dust/merger_trees/target_halos/target_halos.h5"
 
-    output_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo/minihalo_analysis"
-    sim_path = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo/simulation.h5"
-    data_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo"
-    tree_path= "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo/merger_trees/target_halos/target_halos.h5"
+    #output_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo/minihalo_analysis"
+    #sim_path = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo/simulation.h5"
+    #data_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo"
+    #tree_path= "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/pisn_solo/merger_trees/target_halos/target_halos.h5"
+
+    output_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/hyper_512_collapse_solar_dust/minihalo_analysis"
+    sim_path = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/hyper_512_collapse_solar_dust/simulation.h5"
+    data_dir = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/hyper_512_collapse_solar_dust"
+    tree_path = "/disk12/brs/pop2-prime/firstpop2_L2-Seed3_large/hyper_512_collapse_solar_dust/merger_trees/target_halos/target_halos.h5"
 
     #es = yt.load(sim_path)
     a = ytree.load(tree_path)

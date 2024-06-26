@@ -15,6 +15,7 @@ ALPHA = 2
 GAMMA = 5/3
 
 OUTDIR = '.'
+PRE_DIR = "Britton_sim_data/Clump_data/Profiles/"
 
 
 def calculate_cool_rate(n_dim, T_dim):
@@ -41,11 +42,13 @@ try:
 except IndexError:
     star_type = 'pisn'
 if (star_type == 'pisn' or star_type == 'PISN'):
-    ds = yt.load("Profiles/DD0295_profile_number_density_temperature_radius.h5")
+    ds = yt.load(os.path.join(PRE_DIR, "DD0295_profile_number_density_temperature_radius.h5"))
 elif (star_type == 'ccsn' or star_type == 'CCSN'):
-    ds = yt.load("Profiles/DD0179_profile_number_density_temperature_radius.h5")
+    ds = yt.load(os.path.join(PRE_DIR, "DD0179_profile_number_density_temperature_radius.h5"))
+elif (star_type == 'hn' or star_type == 'HN'):
+    ds = yt.load(os.path.join(PRE_DIR, "DD0232_profile_number_density_temperature_radius.h5"))
 else :
-    print("Error, star type must be PISN or CCSN")
+    print("Error, star type must be PISN, HN or CCSN")
     quit()
     
 
