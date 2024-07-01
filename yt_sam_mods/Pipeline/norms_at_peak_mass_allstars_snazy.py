@@ -6,6 +6,7 @@ import yt
 
 from grid_figure import GridFigure
 from yt.visualization.color_maps import yt_colormaps
+from unyt import unyt_quantity, unyt_array
 
 from yt.extensions.sam_mods.graph_funcs import get_time_offset
 from yt.extensions.sam_mods.unyt_funcs import transpose_unyt
@@ -13,6 +14,10 @@ from yt.extensions.sam_mods.unyt_funcs import transpose_unyt
 
 pyplot.rcParams['font.size'] = 12
 
+DENS_LIMS = unyt_array([1e-25, 1e-19], 'g/cm**3')
+TEMP_LIMS = unyt_array([1e1, 1e4], 'K')
+METAL_LIMS = unyt_array([1e-7, 1e-2], 'Zsun')
+BE_LIMS = unyt_array([1e-4, 1e1], '')
 
 
 def _int_fmt(t, pos):
@@ -58,19 +63,18 @@ if __name__ == "__main__":
         my_axes.tick_params(axis="x", direction="inout", which="both", top=True, bottom=True)
 
     my_fig[0].yaxis.set_label_text("Density (g cm$^{-3}$)")
-    my_fig[0].set_ylim(1e-27, 1e-18)
-    my_fig[0].yaxis.set_ticks(np.logspace(-27, -18, 10), minor= True)
+    my_fig[0].set_ylim(*DENS_LIMS)
 
     my_fig[1].yaxis.set_label_text("Temperature (K)")
-    my_fig[1].set_ylim(1e1, 1e5)
+    my_fig[1].set_ylim(*TEMP_LIMS)
     my_fig[1].legend(loc= 'upper right')
 
     my_fig[2].yaxis.set_label_text("Metallicity ($Z_{\odot}$)")
-    my_fig[2].set_ylim(1e-7, 1e0)
+    my_fig[2].set_ylim(*METAL_LIMS)
     my_fig[2].axhline(10**(-5.3), color='red', linestyle='--')
     
     my_fig[3].yaxis.set_label_text("M$_{\\rm gas, enc}$ / M$_{\\rm BE}$")
-    my_fig[3].set_ylim(1e-4, 1e2)
+    my_fig[3].set_ylim(*BE_LIMS)
     my_fig[3].axhline(y= 1.0, color='red', linestyle='--')    
     
     for my_axes in my_fig.left_axes:

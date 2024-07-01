@@ -41,8 +41,8 @@ FIELDS = ['velocity_para', 'temperature', 'metallicity3']
 
 my_fig = GridFigure(3, 3, figsize=(11, 9),
                     left_buffer=0.08, right_buffer=0.02,
-                    bottom_buffer=0.06, top_buffer=0.02,
-                    horizontal_buffer=0.08, vertical_buffer=0.02)
+                    bottom_buffer=0.06, top_buffer=0.08,
+                    horizontal_buffer=0.02, vertical_buffer=0.02)
 assert len(my_fig) == len(dataset_dict) * len(FIELDS), \
     "Error, number of figure pannels doesn't match number of stars * fields"
 
@@ -65,7 +65,7 @@ for i, star_type in enumerate(list(dataset_dict.keys())):
 
     for k, field in enumerate(FIELDS):
         field_dict = get_field_dict(field)
-        gnum = 3 * i + k 
+        gnum = 3 * k + i 
         for j in range (len(data_rays)):
             
             try :
@@ -82,22 +82,35 @@ for i, star_type in enumerate(list(dataset_dict.keys())):
             my_fig[gnum].set_yscale('log')
         if ('velocity' in field):
             my_fig[gnum].axhline(y= 0.0, color='black')
-            my_fig[gnum].yaxis.set_label_text(f"Velocity {star_type}" + r"$~$(km s$^{-1}$)")
-        elif ('metallicity' in field):
-            my_fig[gnum].yaxis.set_label_text(f"Metallicity {star_type}" + r"$~(Z_{\odot})$")
-        else :
-            label = ' '.join(np.char.capitalize(field.split('_')))
-            my_fig[gnum].yaxis.set_label_text(f"{label} {star_type} ({field_dict['units']})")
         my_fig[gnum].tick_params(axis="x", direction="inout", which="both", top=True, bottom=True)
         my_fig[gnum].grid(visible=True, axis="both", zorder=0, linestyle=":", color="black", alpha=0.6)
-        my_fig[gnum].xaxis.set_ticks(np.arange(0, 400, 50), minor=True)
         my_fig[gnum].set_xlim(0.0, X_LIM)
         my_fig[gnum].set_ylim(field_dict['limits'])
-        if (k == len(FIELDS) - 1):
-            my_fig[gnum].legend(loc='upper right')
-        if (i != len(dataset_dict.keys()) - 1):
-            my_fig[gnum].xaxis.set_ticklabels(['' for n in range(len(np.arange(0, 400, 50)))])
-        else :
-            my_fig[gnum].xaxis.set_label_text("Radius (pc)")
-        
+
+
+for i, my_axes in enumerate(my_fig.left_axes):
+    field = FIELDS[i]
+    field_dict = get_field_dict(field)
+    if ('velocity' in field):
+        my_axes.yaxis.set_label_text(r"Velocity (km s$^{-1}$)")
+    elif ('metallicity' in field):
+        my_axes.yaxis.set_label_text(r"Metallicity (Z$_{\odot}$)")
+    else :
+        label = ' '.join(np.char.capitalize(field.split('_')))
+        my_axes.yaxis.set_label_text(f"{label} ({field_dict['units']})")
+for my_axes in my_fig.right_axes:
+    my_axes.tick_params(labelleft=False)
+for my_axes in my_fig.center_axes:
+    my_axes.tick_params(labelleft=False)
+for my_axes in my_fig.bottom_axes:
+    my_axes.xaxis.set_ticks(np.arange(0, 400, 50), minor=True)
+    my_axes.xaxis.set_label_text("Radius (pc)")
+for i, my_axes in enumerate(my_fig.top_axes):
+    my_axes.xaxis.set_label_position("top")
+    my_axes.xaxis.set_label_text(list(dataset_dict.keys())[i].upper(), fontsize=14)
+    my_axes.tick_params(labelbottom=False)
+    my_axes.legend(loc='upper right')
+for my_axes in my_fig.middle_axes:
+    my_axes.tick_params(labelbottom=False)
+
 plt.savefig("model_profiles.png")
