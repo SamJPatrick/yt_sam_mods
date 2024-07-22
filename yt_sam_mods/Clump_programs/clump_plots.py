@@ -2,7 +2,7 @@ import yt
 import numpy as np
 from unyt import unyt_quantity, unyt_array
 from yt.extensions.sam_mods.unyt_funcs import transpose_unyt
-from fragplot import TreePlot
+from yt.extensions.sam_mods.fragplot import TreePlot
 
 import matplotlib
 matplotlib.use('AGG')
@@ -302,12 +302,12 @@ def create_graph(sane_list, plot_fields, graph_name, temp_cmb):
 if __name__ == '__main__':
     
 
-    clump_file_name = "Clumps/DD0294_clump_info_pisn.h5"
-    tree_name = "clump_tree_pisn_294_ids.png"
-    matrix_name = "correlations_intr_ccsn_179"
-    histogram_name = "histo_pisn_295"
-    graph_name = "volume_vs_metal_vs_ratio_179_ccsn_leaf"
-    sep_frag = True
+    clump_file_name = "Clumps/DD0232_clump_info_hn.h5"
+    tree_name = "clump_tree_hn_232_ids.png"
+    matrix_name = "correlations_intr_hn_232"
+    histogram_name = "histo_hn_232"
+    graph_name = "volume_vs_metal_vs_ratio_232_hn_leaf"
+    sep_frag = False
         
     matrix_fields = ['alpha_density', 'alpha_metal', 'volume', 'cell_mass', 'r_factor',
                      'jeans_mass', 'fragmentation_instability',
@@ -327,12 +327,12 @@ if __name__ == '__main__':
     all_clumps = list(df.tree)
     sane_clumps = sanatise_clumps(all_clumps)
     
-    create_tree_plot(df, tree_name, function= label_ids)
+    #create_tree_plot(df, tree_name, function= label_ids)
     #create_graph(sane_leaves, plot_fields, graph_name, temp_cmb)
     #create_matrix_plot(sane_clumps, matrix_fields, matrix_name + "_all.png")
     #create_matrix_plot(sane_leaves, matrix_fields, matrix_name + "_leaves.png")
-    #create_single_histogram(sane_leaves, 'cell_mass', "histo_ccsn_179", sep_frag= sep_frag)
-    #for field in histo_fields:
-    #    to_plot = [f'mean_{field}', f'min_{field}', f'max_{field}']
-    #    create_histogram_plots(sane_leaves, to_plot, histogram_name, temp_cmb, sep_frag= sep_frag)
+    create_single_histogram(sane_leaves, 'cell_mass', "histo_hn_232", sep_frag= sep_frag)
+    for field in histo_fields:
+        to_plot = [f'mean_{field}', f'min_{field}', f'max_{field}']
+        create_histogram_plots(sane_leaves, to_plot, histogram_name, temp_cmb, sep_frag= sep_frag)
 
