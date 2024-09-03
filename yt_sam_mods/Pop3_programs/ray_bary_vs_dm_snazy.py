@@ -29,12 +29,13 @@ RAY_DIR = "Sobolev/Ray_profiles"
 dataset_dict = {'pisn': [98, 100, 110, 120],
                 #'hn': [137, 139, 141, 145, 151],
                 'ccsn': [99, 100, 101, 103, 106]}
-COLORS = ['green', 'blue', 'orange', 'magenta', 'cyan', 'brown']
+#COLORS = ['green', 'blue', 'orange', 'magenta', 'cyan', 'brown']
+COLORS = ['magenta', 'blue', 'cyan', 'green', 'orange', 'brown']
 
 my_fig = GridFigure(2, 1, figsize=(8, 6),
-                    left_buffer=0.10, right_buffer=0.02,
+                    left_buffer=0.12, right_buffer=0.02,
                     bottom_buffer=0.08, top_buffer=0.02,
-                    vertical_buffer=0.00)
+                    vertical_buffer=0.02)
 
 
 for i, star_type in enumerate(list(dataset_dict.keys())):
@@ -63,15 +64,17 @@ for i, star_type in enumerate(list(dataset_dict.keys())):
         my_fig[i].plot(distances, sig.medfilt(dm_densities, kernel_size= FILT_WINDOW), color= COLORS[j], linestyle='--')
         my_fig[i].plot(distances, bary_densities, color= COLORS[j], linestyle='-', label=f'{time:.2f}')
 
-    my_fig[i].yaxis.set_label_text(r"$\rho~$" + f"{star_type}" + r"$~$(g cm$^{-3}$)")
+    my_fig[i].yaxis.set_label_text(r"$\rho~$" + f"{star_type.upper()}" + r"$~$(g cm$^{-3}$)", fontsize= 14)
     my_fig[i].set_yscale('log')
-    my_fig[i].set_ylim(1e-27, 1e-18)
-    my_fig[i].set_xlim(0.0, 400.0)
-    my_fig[i].xaxis.set_ticks(np.arange(0, 401, 20), minor= True)
+    #my_fig[i].set_ylim(1e-27, 1e-18)
+    my_fig[i].set_ylim(1e-26, 1e-21)
+    #my_fig[i].set_xlim(0.0, 400.0)
+    my_fig[i].set_xlim(0.0, 300.0)
+    my_fig[i].xaxis.set_ticks(np.arange(0, 301, 10), minor= True)
     my_fig[i].grid(visible=True, axis="both", zorder=1, linestyle=":", color="black", alpha=0.6)
     my_fig[i].tick_params(axis="x", direction="inout", which="both", top=True, bottom=True)
     my_fig[i].legend(loc='upper right')
 
-my_fig[0].xaxis.set_ticklabels(['' for n in range(len(np.arange(0, 401, 20)))])
+my_fig[0].xaxis.set_ticklabels(['' for n in range(len(np.arange(0, 301, 10)))])
 my_fig[1].xaxis.set_label_text("Radius (pc)")
 plt.savefig("model_profiles.png")

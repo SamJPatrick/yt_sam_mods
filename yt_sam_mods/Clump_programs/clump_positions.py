@@ -13,7 +13,10 @@ from yt.extensions.sam_mods.unyt_funcs import transpose_unyt
 
 
 CLUMP_DIR = "Britton_sim_data/Clump_data/Clumps"
-CLUMP_FILE = "DD0232_clump_info_hn.h5"
+CLUMP_FILE = "DD0295_clump_info_pisn.h5"
+FILE_DICT = {'pisn': "DD0295_clump_info_pisn.h5",
+             'hn': "DD0232_clump_info_hn.h5",
+             'ccsn': "DD0179_clump_info_pisn.h5"}
 MATRIX_NAME = "test_matrix.png"
 
 N_CRIT = unyt_quantity(5.0, 'cm**(-3)')
@@ -32,7 +35,6 @@ class Node:
 
         self.clump_num = clump_num
         self.__class__.added_list.append(clump_num)
-        print(self.__class__.added_list)
         self.child_1 = None
         self.child_2 = None
 
@@ -186,6 +188,10 @@ class Node:
                 break
 
 
+    def produce_tree_list(self):
+
+        return self.__class__.added_list
+
 
     @classmethod
     def not_yet_added(cls, number):
@@ -204,7 +210,7 @@ class Node:
         thresh = d_mean
         #thresh = np.minimum(np.abs(d_mean - np.std(d_matrix)), np.cbrt(d_mean))
         cls.thresh = thresh
-        print(thresh)
+        return thresh
 
 
 
@@ -226,18 +232,24 @@ def sanatise_clumps(clump_list):
 
 
 
-if __name__ == '__main__': 
-            
-    df = yt.load(os.path.join(CLUMP_DIR, CLUMP_FILE))
+if __name__ == '__main__':
+
+    try :
+        star_type = sys.argv[1]
+        df = yt.load(os.path.join(CLUMP_DIR, FILE_DICT[star_type]))
+    except KeyError, IndexError:
+        df = yt.load(os.path.join(CLUMP_DIR, FILE_DICT['pisn']))
+    except FileNotFoundError:
+        print("Error, CLUMP_DIR needs to be redefined")
+
     sane_leaves = sanatise_clumps(df.leaves)
-
     positions = np.array([clump[('clump', 'com')] for clump in sane_leaves])
-    #total_mass = np.sum([clump[('clump', 'cell_mass')] for clump in sane_leaves])
+    masses = np.array([clump[('clump', 'cell_mass')] for clump in sane_leaves])
     n_clumps = len(positions)
-    #pws = [clump[('clump', 'com')] * clump[('clump', 'cell_mass')] for clump in sane_leaves]
-    mean_com = np.mean(positions, axis=0)
-    pos_start = np.argmin([np.linalg.norm(position - mean_com) for position in positions])
-
+    com = np.average(positions, axis=0, weights= masses)
+    com_distances = unyt_array([np.linalg.norm(position - com) for position in positions], 'pc')
+    mean_com = np.mean(com_distances)
+    
     d_matrix = np.zeros((n_clumps, n_clumps))
     for i in range (n_clumps):
         for j in range (n_clumps):
@@ -249,32 +261,50 @@ if __name__ == '__main__':
                 value = np.linalg.norm(positions[i] - positions[j])
                 d_matrix[i][j] = value
                 d_matrix[j][i] = value
-    
+                
+    pos_start = np.argmin(com_distances)
     master_clump = Node(pos_start)
-    master_clump.set_threshold(d_matrix)
+    mean_inter = unyt_quantity(master_clump.set_threshold(d_matrix), 'pc')
     master_clump.search_first_right()
-    node_list = np.array(master_clump.append_to_list([]))
+    #node_list = np.array(master_clump.append_to_list([]))
+    node_list = np.array(master_clump.produce_tree_list())
     print(node_list)
+    print(com)
+    print(mean_inter)
+    print(mean_com)
 
-    densities = transpose_unyt([clump[('clump', 'mean_number_density')] for clump in sane_leaves])
-    distances = unyt_array([np.linalg.norm(clump[('clump', 'com')] - mean_com) for clump in sane_leaves], 'pc')
-    densities_slct = transpose_unyt([clump[('clump', 'mean_number_density')] for clump in sane_leaves])[node_list]
-    distances_slct = unyt_array([np.linalg.norm(clump[('clump', 'com')] - mean_com) for clump in sane_leaves], 'pc')[node_list]
-    print(densities)
-    print(distances)
-    print(densities_slct)
-    print(distances_slct)
-
+    densities = transpose_unyt([clump[('clump', 'max_number_density')] for clump in sane_leaves])
+    metallicities = transpose_unyt([clump[('clump', 'max_metallicity')] for clump in sane_leaves])
+    distances = unyt_array([np.linalg.norm(clump[('clump', 'com')] - com) for clump in sane_leaves], 'pc')
+    densities_slct = transpose_unyt([clump[('clump', 'max_number_density')] for clump in sane_leaves])[node_list]
+    metallicities_slct = transpose_unyt([clump[('clump', 'max_metallicity')] for clump in sane_leaves])[node_list]
+    distances_slct = unyt_array([np.linalg.norm(clump[('clump', 'com')] - com) for clump in sane_leaves], 'pc')[node_list]
+    
     plt.figure()
-    plt.scatter(distances, densities)
-    plt.scatter(distances_slct, densities_slct, c=np.arange(len(node_list)), cmap='turbo')
+    dots_all = plt.scatter(distances, densities, c='blue')
+    dots_slct = plt.scatter(distances_slct, densities_slct, c='red')
     plt.xscale('log')
     plt.xlim(5e-1, 5e1)
     plt.xlabel("Distance from COM (pc)")
     plt.yscale('log')
     plt.ylim(1e2, 1e9)
     plt.ylabel("Clump density (cm$^{-3}$)")
-    plt.savefig("clump_positions_hn.png")
+    plt.legend([dots_slct], [f'{x:.3f}' for x in [mean_inter]], loc='upper right')
+    plt.axvline(x= mean_com, linestyle='--')
+    plt.savefig("clump_positions_pisn_distances.png")
+
+    plt.figure()
+    dots_all = plt.scatter(distances, metallicities, c='blue')
+    dots_slct = plt.scatter(distances_slct, metallicities_slct, c='red')
+    plt.xscale('log')
+    plt.xlim(5e-1, 5e1)
+    plt.xlabel("Distance from COM (pc)")
+    plt.ylim(0.0, 7e-4)
+    plt.ylabel("Clump metallicity (Z$_{\odot}$)")
+    plt.legend([dots_slct], [f'{x:.3f}' for x in [mean_inter]], loc='upper right')
+    plt.axvline(x= mean_com, linestyle='--')
+    plt.savefig("clump_positions_pisn_metals.png")
+
 
     #tree = Tree()
     #tree.create_node(master_clump.clump_num)

@@ -24,12 +24,7 @@ X_LIM = unyt_quantity(400.0, 'pc')
 
 PRE_DIR = "Britton_sim_data"
 RAY_DIR = "Sobolev/Ray_profiles"
-#dataset_dict = {'ccsn': [106, 110, 119],
-#                'hn': [151, 156, 165],
-#                'pisn': [110, 150, 175]}
-#dataset_dict = {'ccsn': [106, 113, 119],
-#                'hn': [151, 159, 165],
-#                'pisn': [110, 140, 160]}
+
 dataset_dict = {'ccsn': [106, 110, 113, 119],
                 'hn': [151, 156, 159, 165],
                 'pisn': [110, 140, 150, 160]}
@@ -37,25 +32,15 @@ dataset_dict = {'ccsn': [106, 110, 113, 119],
 
 
 COLORS = ['green', 'blue', 'orange', 'magenta', 'cyan', 'brown']
-FIELDS = ['velocity_para', 'temperature', 'metallicity3']
+FIELDS = ['velocity_para', 'temperature', 'density', 'metallicity3']
 
-my_fig = GridFigure(3, 3, figsize=(11, 9),
+my_fig = GridFigure(4, 3, figsize=(11, 11),
                     left_buffer=0.08, right_buffer=0.02,
                     bottom_buffer=0.06, top_buffer=0.08,
                     horizontal_buffer=0.02, vertical_buffer=0.02)
 assert len(my_fig) == len(dataset_dict) * len(FIELDS), \
     "Error, number of figure pannels doesn't match number of stars * fields"
 
-'''
-#FIELDS = ['density', 'El_fraction', 'temperature', 'velocity_para']
-#DATASET_NUMS = [100, 110]
-#DATASET_NUMS = [120, 130, 140, 150, 160]
-#DATASET_NUMS = [139, 141, 145, 151]
-#DATASET_NUMS = [153, 157, 161, 173, 185]
-#DATASET_NUMS = [100, 101, 103, 106]
-#DATASET_NUMS = [107, 111, 115, 127, 139]
-#COLORS = ['blue', 'orange', 'magenta', 'cyan', 'brown', 'red']
-'''
 
 for i, star_type in enumerate(list(dataset_dict.keys())):
 
@@ -95,6 +80,8 @@ for i, my_axes in enumerate(my_fig.left_axes):
         my_axes.yaxis.set_label_text(r"Velocity (km s$^{-1}$)")
     elif ('metallicity' in field):
         my_axes.yaxis.set_label_text(r"Metallicity (Z$_{\odot}$)")
+    elif ('density' in field):
+        my_axes.yaxis.set_label_text(r"Density (g cm$^{-3}$)")
     else :
         label = ' '.join(np.char.capitalize(field.split('_')))
         my_axes.yaxis.set_label_text(f"{label} ({field_dict['units']})")

@@ -25,24 +25,22 @@ OUTDIR =  '.'
 
 POP3_POSITION = [0.53805048, 0.53802318, 0.52146589]
 BOXSIZE_PROJ = unyt_quantity(300, 'pc')
-#BOXSIZE_PROJ = unyt_quantity(2.0, 'kpc')
-BOXSIZE_SLICE = unyt_quantity(1.0, 'kpc')
-#BOXSIZE_SLICE = unyt_quantity(2.0, 'kpc')
+BOXSIZE_SLICE = unyt_quantity(300, 'pc')
 
-FIELDS_SLICE = ['density', 'temperature', 'metallicity3']
-FIELDS_PROJ = ['density', 'temperature', 'metallicity3']
+FIELDS_SLICE = ['density', 'temperature']
+FIELDS_PROJ = ['density', 'temperature']
 limit_dict = {'density': unyt_array([1e-27, 1e-21], 'g/cm**3'),
               'temperature': unyt_array([1e1, 1e8], 'K'),
               'metallicity3': unyt_array([1e-7, 1e0], 'Zsun')}
 cmap_dict = {'density': 'turbo', 'temperature': 'inferno', 'metallicity3': 'cool'}
 big_dict = {'ccsn': {'sim_dir': "cc_512_collapse_solar_dust",
-                     'dump_nums_slice': [115],
+                     'dump_nums_slice': [104],
                      'dump_nums_proj': []},
             'hn' : {'sim_dir': "hyper_512_collapse_solar_dust",
-                    'dump_nums_slice': [161],
+                    'dump_nums_slice': [],
                     'dump_nums_proj': []},
             'pisn': {'sim_dir': "pisn_solo",
-                     'dump_nums_slice': [150],
+                     'dump_nums_slice': [130],
                      'dump_nums_proj': []}}
 
 
@@ -120,7 +118,7 @@ if __name__ == "__main__":
             sphere = ds.sphere(ds.arr(node['position'], 'unitary').to('pc'), ds.quan(node['virial_radius'], 'unitary').to('pc'))
             halo_center = sphere.center
             for field in FIELDS_PROJ:
-                p = yt.ProjectionPlot(ds, "x", [("gas", "field")], center= halo_center, width= BOXSIZE_PROJ, weight_field=("gas", "density"))
+                p = yt.ProjectionPlot(ds, "x", [("gas", field)], center= halo_center, width= BOXSIZE_PROJ, weight_field=("gas", "density"))
                 p.set_cmap(field, cmap_dict[field])
                 p.set_axes_unit('pc')
                 p.set_zlim(field, *limit_dict[field])
@@ -135,10 +133,11 @@ if __name__ == "__main__":
             #sphere = get_sphere(node, ds)
             sphere = ds.sphere(ds.arr(node['position'], 'unitary').to('pc'), ds.quan(node['virial_radius'], 'unitary').to('pc'))
             halo_center = sphere.center
-            ray_center, ray_vec, north_vecs = get_ray(ds, halo_center)
+            #ray_center, ray_vec, north_vecs = get_ray(ds, halo_center)
             for field in FIELDS_SLICE:
-                p = yt.OffAxisSlicePlot(ds, north_vecs[1], [('gas', field)], center= ray_center,
-                                        width= ds.quan(BOXSIZE_SLICE.value, BOXSIZE_SLICE.units), north_vector= ray_vec)
+                p = yt.SlicePlot(ds, "x", [("gas", field)], center= halo_center, width= BOXSIZE_PROJ)
+                #p = yt.OffAxisSlicePlot(ds, north_vecs[1], [('gas', field)], center= ray_center,
+                #                        width= ds.quan(BOXSIZE_SLICE.value, BOXSIZE_SLICE.units), north_vector= ray_vec)
                 p.set_cmap(field, cmap_dict[field])
                 p.set_axes_unit('pc')
                 p.set_zlim(field, *limit_dict[field])

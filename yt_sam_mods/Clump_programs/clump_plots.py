@@ -267,32 +267,32 @@ def create_graph(sane_list, plot_fields, graph_name, temp_cmb):
     plt.scatter(gclumps(plot_fields[0], sane_list), np.abs(gclumps(plot_fields[1], sane_list)),
                 c= gclumps(plot_fields[2], sane_list), cmap= 'turbo', vmin= 1e-3, vmax= 5e1, norm=matplotlib.colors.LogNorm())
     #plt.xlabel(f'{plot_fields[0]}')
-    #plt.xlabel(r'$Mass (M_{\odot})$')
-    plt.xlabel(r'$Volume ~(pc^{-3})$')
+    plt.xlabel(r'$Mass (M_{\odot})$')
+    #plt.xlabel(r'$Volume ~(pc^{-3})$')
     #plt.xlabel(r'$\alpha_{\rho}$')
     #plt.ylabel(r'$\alpha_{\rho}$')
     #plt.ylabel(r'$\alpha_{Z}$')
-    plt.ylabel(r'$Z/Z_{\odot}$')
+    #plt.ylabel(r'$Z/Z_{\odot}$')
     #plt.ylabel(r'$\tau_{dyn}/\tau_{cool}$')
-    #plt.ylabel(r'$Temperature ~(K)$')
+    plt.ylabel(r'Temperature (K)')
     #plt.ylim(0, 8)
     #plt.ylim(0, 60)
     #plt.ylim(1e-3, 5e1)
-    #plt.ylim(30, 70)
+    plt.ylim(30, 70)
     #plt.ylim(30, 800)
-    plt.ylim(1e-7, 1e-3)
+    #plt.ylim(1e-7, 1e-3)
     #plt.xlim(0, 60)
-    #plt.xlim(1e-3, 5e1)
-    plt.xlim(5e-12, 1e1)
+    plt.xlim(1e-3, 5e1)
+    #plt.xlim(5e-12, 1e1)
     plt.xscale('log')
-    plt.yscale('log')
+    #plt.yscale('log')
     #plt.colorbar(label= "r_factor")
     #plt.colorbar(label= r"$Volume ~(pc^{-3})$")
-    plt.colorbar(label= r"$\tau_{cool}/\tau_{dyn}$")
+    plt.colorbar(label= r"$\tau_{dyn}/\tau_{cool}$")
     #plt.axhline(y= 1.0)
-    #plt.axhline(y= temp_cmb, color='green', linestyle='--')
-    plt.axhline(y= 10**(-5.3), color='green', linestyle='--')
-    plt.axhline(y= 1.35e-5, color='red', linestyle='--')
+    plt.axhline(y= temp_cmb, color='green', linestyle='--')
+    #plt.axhline(y= 10**(-5.3), color='green', linestyle='--')
+    #plt.axhline(y= 1.35e-5, color='red', linestyle='--')
     #plt.colorbar(label= r"$\alpha_{\rho}$")
     plt.savefig(f"{graph_name}.png")
     plt.close()
@@ -302,11 +302,11 @@ def create_graph(sane_list, plot_fields, graph_name, temp_cmb):
 if __name__ == '__main__':
     
 
-    clump_file_name = "Clumps/DD0232_clump_info_hn.h5"
+    clump_file_name = "Britton_sim_data/Clump_data/Clumps//DD0232_clump_info_hn.h5"
     tree_name = "clump_tree_hn_232_ids.png"
     matrix_name = "correlations_intr_hn_232"
     histogram_name = "histo_hn_232"
-    graph_name = "volume_vs_metal_vs_ratio_232_hn_leaf"
+    graph_name = "mass_vs_temp_vs_frag_232_pisn_leaf_sane"
     sep_frag = False
         
     matrix_fields = ['alpha_density', 'alpha_metal', 'volume', 'cell_mass', 'r_factor',
@@ -317,7 +317,8 @@ if __name__ == '__main__':
                      'mean_H2_fraction',
                      'min_metallicity', 'mean_metallicity', 'max_metallicity']
     histo_fields = ['temperature', 'number_density', 'metallicity']
-    plot_fields = ['volume', 'mean_metallicity', 'fragmentation_instability']
+    #plot_fields = ['volume', 'mean_metallicity', 'fragmentation_instability']
+    plot_fields = ['cell_mass', 'min_temperature', 'fragmentation_instability']
     
     df = yt.load(clump_file_name)
     temp_cmb = CMB_Z0 * (df.current_redshift + 1.0)
@@ -328,11 +329,11 @@ if __name__ == '__main__':
     sane_clumps = sanatise_clumps(all_clumps)
     
     #create_tree_plot(df, tree_name, function= label_ids)
-    #create_graph(sane_leaves, plot_fields, graph_name, temp_cmb)
+    create_graph(sane_leaves, plot_fields, graph_name, temp_cmb)
     #create_matrix_plot(sane_clumps, matrix_fields, matrix_name + "_all.png")
     #create_matrix_plot(sane_leaves, matrix_fields, matrix_name + "_leaves.png")
-    create_single_histogram(sane_leaves, 'cell_mass', "histo_hn_232", sep_frag= sep_frag)
-    for field in histo_fields:
-        to_plot = [f'mean_{field}', f'min_{field}', f'max_{field}']
-        create_histogram_plots(sane_leaves, to_plot, histogram_name, temp_cmb, sep_frag= sep_frag)
+    #create_single_histogram(sane_leaves, 'cell_mass', "histo_hn_232", sep_frag= sep_frag)
+    #for field in histo_fields:
+    #    to_plot = [f'mean_{field}', f'min_{field}', f'max_{field}']
+    #    create_histogram_plots(sane_leaves, to_plot, histogram_name, temp_cmb, sep_frag= sep_frag)
 

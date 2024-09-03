@@ -112,3 +112,32 @@ my_fig = multi_image(panels, "paper_multiplot.pdf", figsize=(8, 6.7), fontsize=1
                      cbar_orientation='vertical',
                      bottom_buffer=0.05, top_buffer=0.01, left_buffer=0.12, right_buffer=0.12)
 '''
+
+
+filenames = ["DD0104_temperature_slice.h5", "DD0130_temperature_slice.h5",
+             "DD0104_density_proj.h5", "DD0130_density_proj.h5"]
+
+panels = []
+panels.append({"filename": filenames[0], "quantity": ("gas", "temperature"),
+               "range": [*TEMP_LIMS_SLICE], "cmap": "inferno", "label": "T [K]",
+               "cbar_tick_formatter": powformat})
+panels.append({"filename": filenames[1], "quantity": ("gas", "temperature"),
+               "range": [*TEMP_LIMS_SLICE], "cmap": "inferno", "label": "T [K]",
+               "cbar_tick_formatter": powformat})
+panels.append({"filename": filenames[2], "quantity": ("gas", "density"),
+               "range": [*DENS_LIMS], "cmap": "algae", "label": "$\\rho$ [g/cm$^{3}$]",
+               "cbar_tick_formatter": powformat})
+panels.append({"filename": filenames[3], "quantity": ("gas", "density"),
+               "range": [*DENS_LIMS], "cmap": "algae", "label": "$\\rho$ [g/cm$^{3}$]",
+               "cbar_tick_formatter": powformat})
+
+my_fig = multi_image(panels, "paper_multiplot.png", figsize=(8, 6.7), fontsize=12, dpi=200,
+                     n_columns=2, bg_color="white", text_color="black",
+                     tick_range = RANGE, tick_label = 'pc', n_ticks = 7,
+                     cbar_orientation='vertical',
+                     bottom_buffer=0.05, top_buffer=0.01, left_buffer=0.12, right_buffer=0.12)
+#my_fig = multi_image(panels, "paper_multiplot.pdf", figsize=(8, 6.7), fontsize=12, dpi=200,
+#                     n_columns=2, bg_color="white", text_color="black",
+#                     tick_range = RANGE, tick_label = 'pc', n_ticks = 7,
+#                     cbar_orientation='vertical',
+#                     bottom_buffer=0.05, top_buffer=0.01, left_buffer=0.12, right_buffer=0.12)

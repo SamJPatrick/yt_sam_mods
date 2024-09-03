@@ -140,8 +140,8 @@ def get_time_z(filename, star_mode, sim_file=None):
     return (time, z)
 
 
-def get_title(filename, star_mode):
-    time, z = get_time_z(filename, star_mode)
+def get_title(filename, star_mode, sim_file=None):
+    time, z = get_time_z(filename, star_mode, sim_file)
     dump = f"DD{get_dump_num(filename)}"
     #title = f"{dump}, z={z:.2f}, t = {time:.2f}"
     title = f"z={z:.2f}, t = {time:.2f}"
