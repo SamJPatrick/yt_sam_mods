@@ -14,6 +14,9 @@ from yt.extensions.sam_mods.unyt_funcs import transpose_unyt
 
 pyplot.rcParams['font.size'] = 12
 
+PRE_DIR = "Britton_sim_data"
+MASS_FILE = "star_None_mass.h5"
+
 DENS_LIMS = unyt_array([1e-25, 1e-19], 'g/cm**3')
 TEMP_LIMS = unyt_array([1e1, 1e4], 'K')
 METAL_LIMS = unyt_array([1e-7, 1e-2], 'Zsun')
@@ -39,7 +42,6 @@ if __name__ == "__main__":
 
     fields = ["density", "temperature", "metallicity3", "bonnor_ebert_ratio"]
     color_dict = {'ccsn': 'blue', 'hn': 'orange', 'pisn': 'green'}
-    file_dict = {'ccsn': 'CCSN', 'hn': 'HN', 'pisn': 'PISN'}
     
     my_fig = GridFigure(2, 2, figsize=(11, 9),
                     left_buffer=0.10, right_buffer=0.10,
@@ -48,7 +50,7 @@ if __name__ == "__main__":
         
     for i, my_axes in enumerate(my_fig):
         for star_type in color_dict.keys():
-            filename = os.path.join("Britton_sim_data", file_dict[star_type], "star_None_mass.h5")
+            filename = os.path.join(PRE_DIR, star_type.upper(), MASS_FILE)
             pds = yt.load(filename)
             df_mass = pds.data
             r_index = np.argmax(df_mass[('data', 'bonnor_ebert_ratio')][-1])

@@ -219,8 +219,10 @@ def node_profile(node, bin_fields, profile_fields, weight_field,
         wname = weight_field[1]
 
     output_key = get_output_key(node, output_format)
-    fpre = f"{output_key}_{nd}D_profile"
-    fkey = "_".join([field[1] for field in bin_fields]) + f"_{wname}"
+    #fpre = f"{output_key}_{nd}D_profile"
+    fpre = f"{output_key}_profile"
+    #fkey = "_".join([field[1] for field in bin_fields]) + f"_{wname}"
+    fkey = f"weight_field_{wname}"
     fn = f"{fpre}_{fkey}.h5"
     ofn = os.path.join(output_dir, fn)
     if os.path.exists(ofn):

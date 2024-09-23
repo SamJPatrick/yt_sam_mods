@@ -5,6 +5,7 @@ Functions for preparing profile data for the Minihalo model.
 from collections import defaultdict
 import numpy as np
 import os
+import pdb
 from scipy.interpolate import interp1d
 from unyt import uvstack
 
@@ -93,7 +94,10 @@ def load_model_profiles(star_id,
 
 # Profile rebinning functions
 
-_lin_fields = ("velocity_x", "velocity_y", "velocity_z")
+_lin_fields = ('velocity_x', 'velocity_y', 'velocity_z',
+               'tangential_velocity_magnitude', 'velocity_magnitude',
+               'velocity_spherical_phi', 'velocity_spherical_radius', 'velocity_spherical_theta')
+
 
 def rebin_profile(profile, bin_field, new_bins):
     """
@@ -138,6 +142,48 @@ def rebin_profile(profile, bin_field, new_bins):
 
     return new_profile
 
+'''
+def rebin_profile(profile, bin_field, new_bins):
+    ibins = np.digitize(new_bins, profile[bin_field]) - 1
+    do = (ibins >= 0) & (ibins < profile[bin_field].size - 1)
+
+    l_new_bins = np.log10(new_bins)
+    l_old_bins = np.log10(profile[bin_field])
+    new_profile = {bin_field: profile[bin_field].units * new_bins}
+    for field, data in profile.items():
+        if isinstance(field, tuple):
+            fname = field[1]
+        else:
+            fname = field
+
+        log_field = fname not in _lin_fields
+
+        if field == bin_field:
+            continue
+
+        new_data = data.units * np.zeros(new_bins.size)
+        new_profile[field] = new_data
+        if data.nonzero()[0].size == 0:
+            continue
+
+        if log_field:
+            l_data = np.log10(data.clip(1e-100, np.inf))
+        else:
+            l_data = data.copy()
+
+        slope = (l_data[ibins[do]+1] - l_data[ibins[do]]) / \
+            (l_old_bins[ibins[do]+1] - l_old_bins[ibins[do]])
+        new_l_data = slope * (l_new_bins[do] - l_old_bins[ibins[do]]) + \
+          l_data[ibins[do]]
+
+        if log_field:
+            new_data[do] = np.power(10, new_l_data)
+        else:
+            new_data[do] = new_l_data.copy()
+
+    return new_profile
+'''
+
 def rebin_profiles(profile_data, bin_field, bin_density):
     """
     Rebin a list of profiles with a different field.
@@ -161,6 +207,7 @@ def default_func(func, tracked_val, new_vals):
     else:
         return func(tracked_val, func(new_vals))
 
+
 def track_global_binning(pdata, bin_data):
     if not bin_data:
         for key in ['max', 'min']:
@@ -168,8 +215,10 @@ def track_global_binning(pdata, bin_data):
 
     bin_data['min'] = default_func(min, bin_data['min'], pdata)
     bin_data['max'] = default_func(max, bin_data['max'], pdata)
+
     if 'bin_density' not in bin_data:
         bin_data['bin_density'] = (pdata.size - 1) / (pdata.max() - pdata.min())
+
 
 def calc_global_binning(data, field, log=True, rounding=True, nonzero=True,
                         bin_density=False):
@@ -252,8 +301,8 @@ def find_peaks(ds, bin_field, peak_field, time_index):
     i_peaks.sort()
     return i_peaks
 
-def create_profile_cube(star_id, output_dir="star_cubes",
-                        data_dir="star_minihalos"):
+def create_profile_cube(star_id, output_dir="star_cubes", data_dir="star_minihalos",
+                        vel_profs= False, incl_stdv= True):
     ### Bonnor-Ebert Mass constant
     a = 1.67
     b = (225 / (32 * np.sqrt(5 * np.pi))) * a**-1.5
@@ -304,44 +353,45 @@ def create_profile_cube(star_id, output_dir="star_cubes",
             "gas_mass_enclosed": gas_mass_enclosed,
             "total_mass_enclosed": total_mass_enclosed,
             "dark_matter_mass_enclosed": dark_matter_mass_enclosed,
+            #"dark_matter_density": dark_matter_density_volume,
             # "gas_density_volume_weighted": gas_density_volume,
-            # "dark_matter_density": dark_matter_density_volume,
             # "cell_volume_weight": volume_weight,
             "used": npds.data['data', 'used'],
         }
 
         current_time = npds.current_time.to("Myr")
         if current_time < creation_time:
-            v_turb = mpds.data['standard_deviation', 'velocity_magnitude'] #
-            profile_datum["turbulent_velocity"] = v_turb #
-
-            p = mpds.data['data', 'pressure'] #
-            cs = mpds.data['data', 'sound_speed'] #
-            m_BE = (b * (cs**4 / G**1.5) * p**-0.5) #
-            profile_datum["bonnor_ebert_ratio"] = (gas_mass_enclosed / m_BE).to("") #
-
-            dr = np.diff(x_bins) #
-            r = mpds.data['data', 'radius'] #
-            rho = mpds.data['data', 'density'] #
-            dP_hyd = (G * total_mass_enclosed * rho * dr / r**2)[used] #
-            P_hyd1 = np.flip(np.flip(dP_hyd).cumsum()).to(p.units) #
-            P_hydro = np.zeros_like(p) #
-            P_hydro[used] = P_hyd1 #
-            profile_datum["hydrostatic_pressure"] = P_hydro #
-
-            #cs_eff = np.sqrt(cs**2 + v_turb**2) #
-            #t_cs = (2 * r / cs_eff).to("Myr") #
-            t_cs =  (2 * r / cs).to("Myr") #
-            profile_datum["sound_crossing_time"] = t_cs #
-            t_turb = (2 * r / v_turb).to("Myr") #
-            profile_datum["turbulent_sound_crossing_time"] = t_turb #
-
-            exclude_fields = ['x', 'x_bins', 'used', 'weight', 'dark_matter_density']
-            pfields = [field for field in mpds.field_list
-                       if field[0] == 'data' and
-                       field[1] not in exclude_fields]
-            profile_datum.update(
-                {field: mpds.data[field] for field in pfields})
+            dr = np.diff(x_bins)
+            r = mpds.data['data', 'radius']
+            v_turb = mpds.data['standard_deviation', 'velocity_magnitude']
+            profile_datum["turbulent_velocity"] = v_turb
+            cs = mpds.data['data', 'sound_speed']
+            t_cs =  (2 * r / cs).to("Myr") 
+            #cs_eff = np.sqrt(cs**2 + v_turb**2)
+            #t_cs = (2 * r / cs_eff).to("Myr")
+            profile_datum["sound_crossing_time"] = t_cs
+            t_turb = (2 * r / v_turb).to("Myr")
+            profile_datum["turbulent_sound_crossing_time"] = t_turb
+                        
+            if (not vel_profs): 
+                p = mpds.data['data', 'pressure']
+                m_BE = (b * (cs**4 / G**1.5) * p**-0.5)
+                profile_datum["bonnor_ebert_ratio"] = (gas_mass_enclosed / m_BE).to("")
+                rho = mpds.data['data', 'density']
+                dP_hyd = (G * total_mass_enclosed * rho * dr / r**2)[used]
+                P_hyd1 = np.flip(np.flip(dP_hyd).cumsum()).to(p.units)
+                P_hydro = np.zeros_like(p)
+                P_hydro[used] = P_hyd1
+                profile_datum["hydrostatic_pressure"] = P_hydro
+            
+            exclude_fields = ['x', 'x_bins', 'used', 'weight']
+            pfields = [field[1] for field in mpds.field_list if
+                       ((field[0] == 'data') and (field[1] not in exclude_fields))]
+            profile_datum.update({field: mpds.data[('data', field)] for field in pfields})
+            if (incl_stdv):
+                pfields_stdv = [field[1] for field in mpds.field_list if
+                                ((field[0] == 'standard_deviation') and (field[1] not in exclude_fields))]
+                profile_datum.update({f'{field}_stdv': mpds.data[('standard_deviation', field)] for field in pfields_stdv})
             profile_datum["cell_mass_weight"] = mpds.data["data", "weight"]
 
         cstart = int((np.log10(x_bins[0]) - bmin) / dx)
@@ -362,18 +412,18 @@ def create_profile_cube(star_id, output_dir="star_cubes",
     extra_data = {"time": cube_time}
     extra_attrs = {"creation_time": creation_time}
 
-    fn = os.path.join(output_dir, f"star_{star_id}_mass.h5")
-    create_rebinned_cube(npds, fn, profile_data, extra_data=extra_data,
-                         extra_attrs=extra_attrs)
+    str_dir = data_dir.split('/')[-1].lower()
+    fn = os.path.join(output_dir, f"star_{star_id}_mass_{str_dir}.h5")
+    create_rebinned_cube(npds, fn, profile_data, extra_data=extra_data, extra_attrs=extra_attrs)
 
     # include radius as just a 1d array since it is constant over time
     cube_radius = np.logspace(bmin, bmax, nbins+1) * npds.profile.x.units
     extra_data["radius"] = cube_radius
-    del profile_cube["data", "radius"]
+    #del profile_cube["data", "radius"]
+    del profile_cube["radius"]
     profile_cube.update(extra_data)
-    fn = os.path.join(output_dir, f"star_{star_id}_radius.h5")
-    yt.save_as_dataset(npds, filename=fn, data=profile_cube,
-                       extra_attrs=extra_attrs)
+    fn = os.path.join(output_dir, f"star_{star_id}_radius_{str_dir}.h5")
+    yt.save_as_dataset(npds, filename=fn, data=profile_cube, extra_attrs=extra_attrs)
 
 def time_interpolate(data, tdata, bin_field):
     """
@@ -438,7 +488,6 @@ def create_rebinned_cube(ds, filename, pdata,
                          bin_field="gas_mass_enclosed", bin_density=10):
 
     rdata = rebin_profiles(pdata, bin_field, bin_density)
-
     pcube = {}
     for field in rdata[0]:
         datum = []
@@ -448,10 +497,8 @@ def create_rebinned_cube(ds, filename, pdata,
             datum.append(pdatum[field])
         pcube[field] = uvstack(datum)
 
-    time_interpolate(pcube, extra_data["time"], bin_field)
-    
+    time_interpolate(pcube, extra_data["time"], bin_field)    
     if extra_data is not None:
         pcube.update(extra_data)
 
-    yt.save_as_dataset(ds, filename=filename, data=pcube,
-                       extra_attrs=extra_attrs)
+    yt.save_as_dataset(ds, filename=filename, data=pcube, extra_attrs=extra_attrs)

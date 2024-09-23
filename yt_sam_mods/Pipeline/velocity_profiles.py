@@ -36,7 +36,11 @@ def all_profiles(ap, outdir='.'):
                "velocity_spherical_theta": {"units": "km/s", "log": False},
                "velocity_spherical_phi": {"units": "km/s", "log": False},
                "tangential_velocity_magnitude": {"units": "km/s", "log": False},
-               "sound_speed": {"units": "km/s", "log": False}}
+               "sound_speed": {"units": "km/s", "log": False},
+               "cooling_time": {"units": "Myr", "log": False},
+               "dynamical_time": {"units": "Myr", "log": False},
+               "total_dynamical_time": {"units": "Myr", "log": False},
+               "vortical_time": {"units": "Myr", "log": False}}
     my_fields = [("gas", field) for field in _fields]
     
     #for field in my_fields:
@@ -44,7 +48,7 @@ def all_profiles(ap, outdir='.'):
     #    my_kwargs["logs"] = {x_bin_field: True, field: _fields[field[1]]["log"]}
     #    my_kwargs["units"] = {x_bin_field: "pc", field: _fields[field[1]]["units"]}
     #    ap.add_operation(node_profile, [x_bin_field, field], profile_fields, weight_field,
-                         profile_kwargs=my_kwargs, output_dir=fpath)
+    #                     profile_kwargs=my_kwargs, output_dir=fpath)
 
     my_kwargs = pkwargs.copy()
     my_kwargs["logs"] = {x_bin_field: True}

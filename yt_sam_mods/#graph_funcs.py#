@@ -78,7 +78,6 @@ def get_field_dict(field):
     return FIELD_DICTS[entry_num.item()]
 
 
-
 def get_time_offset(star_mode):
     time_offset = unyt_quantity(0.0, 'Myr')
     if (("PI" in star_mode) or ("pi" in star_mode)):

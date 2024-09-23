@@ -2,6 +2,7 @@ from more_itertools import always_iterable
 import numpy as np
 
 from unyt import unyt_array
+from yt.extensions.sam_mods.unyt_funcs import transpose_unyt
 from yt.data_objects.profiles import create_profile
 
 
@@ -54,6 +55,10 @@ def my_profile(dobj, bin_fields, profile_fields, n_bins=None, extrema=None, logs
     """
 
     ds = dobj.ds
+    bulk_vel = transpose_unyt([dobj.argmax("density", axis= 'velocity_x').to('km/s'),
+                               dobj.argmax("density", axis= 'velocity_y').to('km/s'),
+                               dobj.argmax("density", axis= 'velocity_z').to('km/s')])
+    dobj.set_field_parameter("bulk_velocity", bulk_vel)
 
     if units is None:
         units = {}
