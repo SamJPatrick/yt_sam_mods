@@ -16,8 +16,7 @@ from unyt import Myr, yr, pc
 
 
 PRE_DIR = "Britton_sim_data"
-VEL_DIR = "Profiles/Velocity_profiles"
-MASS_FILE = "star_None_mass_velocity_profiles_test.h5"
+MASS_FILE = "star_None_mass_velocity_profiles.h5"
 STAR_DIRS = ['CCSN', 'HN', 'PISN']
 
 my_fig = GridFigure(1, 3, figsize=(13, 5),
@@ -46,4 +45,5 @@ for i, my_axes in enumerate(my_fig):
     radii = df_vel.data[('data', 'radius')][-1][used].to('pc')
     my_axes.plot(radii, velocities)
     my_axes.axhline(y= 0.0, color= 'red')
-    plt.savefig("model_profiles.png")
+
+plt.savefig("model_profiles.png")
