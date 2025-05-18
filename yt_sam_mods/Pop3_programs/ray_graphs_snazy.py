@@ -81,7 +81,7 @@ for i, star_type in enumerate(list(dataset_dict.keys())):
 
 
 
-
+'''
 for i, star_type in enumerate(list(dataset_dict.keys())):
 
     with open(os.path.join(PRE_DIR, star_type.upper(), DISTANCE_FILE), newline='\n') as myfile:
@@ -116,7 +116,7 @@ for i, star_type in enumerate(list(dataset_dict.keys())):
             cbar = ColorbarBase(new_ax, cmap= plt.get_cmap(CMAP), norm=my_norm, orientation='vertical')
             #cbar.set_label("Time (Myr)")
             cbar.set_label("")
-
+'''
 
 for i, my_axes in enumerate(my_fig.left_axes):
     field = FIELDS[i]
@@ -144,7 +144,7 @@ for my_axes in my_fig.bottom_axes:
 
 for i, my_axes in enumerate(my_fig.top_axes):
     my_axes.xaxis.set_label_position("top")
-    my_axes.xaxis.set_label_text(star_type.upper(), fontsize=14)
+    my_axes.xaxis.set_label_text(list(dataset_dict.keys())[i].upper(), fontsize=14)
     my_axes.tick_params(labelbottom=False)
     my_axes.legend(loc='upper right')
 
@@ -192,4 +192,4 @@ for my_axes in my_fig:
     my_axes.add_collection(lc)
 '''    
 
-plt.savefig("model_profiles.png")
+plt.savefig("ray_graphs.png")
